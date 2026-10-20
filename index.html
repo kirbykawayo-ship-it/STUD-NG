@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f7fb" />
+  <title>STUDING — いっしょに勉強しよう</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home"><span class="brand-mark">S</span><span>STUDING</span></a>
+      <nav class="nav-links" aria-label="メインメニュー">
+        <button class="nav-link active" data-view="home"><span>⌂</span> ホーム</button>
+        <button class="nav-link" data-view="ranking"><span>↗</span> ランキング</button>
+        <button class="nav-link" data-view="timer"><span>◷</span> 勉強タイマー</button>
+        <button class="nav-link" data-view="chat"><span>▤</span> チャット</button>
+        <button class="nav-link" data-view="profile"><span>◎</span> マイプロフィール</button>
+      </nav>
+      <div class="sidebar-note"><div class="note-dot"></div><div><strong>小さな積み重ね</strong><p>今日の一歩を記録しよう。</p></div></div>
+      <div class="sidebar-bottom"><span class="online-dot"></span><span id="connection-label">デモモード</span></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar"><div><p class="eyebrow" id="today-label">STUDY COMMUNITY</p><h1 id="page-title">みんなの勉強ログ</h1></div><div class="top-actions"><button class="icon-button" id="refresh-button" title="更新">↻</button><button class="user-pill" id="account-button"><span class="avatar small">S</span><span id="account-label">ログイン</span></button></div></header>
+      <section id="notice" class="notice hidden" role="status"></section>
+      <section id="public-banner" class="public-banner"><div><span class="banner-label">STUDY TOGETHER</span><h2>ひとりじゃないから、続けられる。</h2><p>勉強時間を記録して、仲間のがんばりも見てみよう。</p></div><div class="banner-illustration" aria-hidden="true"><span class="bubble bubble-one">+25 min</span><span class="bubble bubble-two">Focus!</span><div class="book-stack"><i></i><i></i><i></i></div></div></section>
+      <section class="stats-grid" id="stats-grid">
+        <article class="stat-card"><div class="stat-top"><span>今日の合計勉強時間</span><span class="stat-icon purple">◷</span></div><strong id="stat-today">0<span>分</span></strong><p>コミュニティ全体</p></article>
+        <article class="stat-card"><div class="stat-top"><span>今週の合計</span><span class="stat-icon blue">▥</span></div><strong id="stat-week">0<span>分</span></strong><p>今週の積み重ね</p></article>
+        <article class="stat-card"><div class="stat-top"><span>参加メンバー</span><span class="stat-icon orange">◎</span></div><strong id="stat-members">3<span>人</span></strong><p>一緒に勉強する仲間</p></article>
+      </section>
+
+      <div class="content-grid" id="home-view">
+        <section class="panel feed-panel"><div class="panel-heading"><div><h2>みんなの勉強ログ</h2><p>コミュニティの最新の記録</p></div><button class="text-button" data-view="ranking">ランキングを見る →</button></div>
+          <div id="feed-list" class="feed-list"></div>
+          <div id="feed-empty" class="empty-state hidden"><div class="empty-icon">✎</div><strong>まだ記録がありません</strong><p>ログインして、最初の勉強記録を投稿しよう。</p><button class="primary-button" id="empty-login">ログイン / 登録</button></div>
+        </section>
+        <aside class="right-column"><section class="panel ranking-panel"><div class="panel-heading"><div><h2>今週のランキング</h2><p>勉強時間で競い合おう</p></div><span class="trophy">♜</span></div><div id="mini-ranking" class="mini-ranking"></div><button class="wide-secondary" data-view="ranking">ランキングをすべて見る</button></section>
+          <section class="panel focus-panel"><div class="focus-symbol">✦</div><h3>今日も一歩ずつ。</h3><p>短い時間でも、続けることに意味がある。</p><button class="primary-button full" data-view="timer">勉強を記録する</button></section></aside>
+      </div>
+      <section id="ranking-view" class="panel standalone-view hidden"><div class="panel-heading"><div><h2>勉強時間ランキング</h2><p>みんなの積み重ねをチェック</p></div><select id="ranking-period" class="select-control"><option value="week">今週</option><option value="today">今日</option><option value="all">累計</option></select></div><div id="full-ranking" class="full-ranking"></div></section>
+      <section id="timer-view" class="panel standalone-view hidden"><div class="timer-layout"><div class="timer-main"><span class="section-kicker">FOCUS SESSION</span><h2>勉強タイマー</h2><p class="muted">集中した時間を記録しよう。</p><div class="timer-display" id="timer-display">00:00:00</div><div class="timer-status" id="timer-status"><span></span> 記録待機中</div><div class="timer-controls"><button class="primary-button" id="timer-start">▶ スタート</button><button class="secondary-button" id="timer-pause" disabled>一時停止</button><button class="secondary-button" id="timer-reset">リセット</button></div><label class="field-label" for="study-subject">勉強した内容（任意）</label><input class="text-input" id="study-subject" maxlength="80" placeholder="例：数学の問題集、英単語" /><button class="primary-button full save-session" id="save-session" disabled>この時間を記録する</button><p class="microcopy">記録を保存するにはログインが必要です。</p></div><div class="manual-entry"><div class="manual-icon">✎</div><h3>手動で記録</h3><p>タイマーを使わなかった日も、あとから入力できます。</p><form id="manual-form"><label class="field-label" for="manual-minutes">勉強時間（分）</label><input class="text-input" id="manual-minutes" type="number" min="1" max="1440" required placeholder="例：45" /><label class="field-label" for="manual-subject">勉強した内容（任意）</label><input class="text-input" id="manual-subject" maxlength="80" placeholder="例：英語の復習" /><button class="primary-button full" type="submit">記録を追加</button></form></div></div></section>
+      <section id="chat-view" class="panel standalone-view hidden"><div class="panel-heading"><div><h2>みんなのチャット</h2><p>勉強の相談や励ましを共有しよう</p></div><span class="chat-lock" id="chat-access-label">ログインが必要です</span></div><div id="chat-messages" class="chat-messages"><div class="empty-state"><div class="empty-icon">▤</div><strong>チャット</strong><p>ログインするとメッセージを送信できます。</p></div></div><form id="chat-form" class="chat-form"><input id="chat-input" class="text-input" maxlength="500" placeholder="メッセージを書く…" disabled /><button class="primary-button" type="submit" disabled id="chat-send">送信</button></form><p class="microcopy">本名・住所・学校名などの個人情報は投稿しないでください。</p></section>
+      <section id="profile-view" class="panel standalone-view hidden"><div class="panel-heading"><div><h2>マイプロフィール</h2><p>自分の勉強の記録</p></div></div><div id="profile-content" class="profile-content"><div class="empty-state"><div class="empty-icon">◎</div><strong>ログインしてください</strong><p>アカウントを作成すると、勉強記録を管理できます。</p><button class="primary-button" id="profile-login">ログイン / 登録</button></div></div></section>
+      <footer class="footer"><span>© STUDING</span><span>一歩ずつ、積み重ねよう。</span></footer>
+    </main>
+  </div>
+
+  <dialog id="auth-dialog" class="auth-dialog"><form method="dialog" class="dialog-close-row"><button class="close-button" aria-label="閉じる">×</button></form><div class="auth-brand"><span class="brand-mark">S</span><span>STUDING</span></div><h2 id="auth-title">おかえりなさい</h2><p class="muted" id="auth-subtitle">ログインして勉強を記録しよう。</p><div class="auth-tabs"><button class="auth-tab active" id="login-tab" type="button">ログイン</button><button class="auth-tab" id="signup-tab" type="button">新規登録</button></div><form id="auth-form"><label class="field-label" for="auth-username" id="username-label">ユーザー名（新規登録時）</label><input class="text-input hidden" id="auth-username" maxlength="24" placeholder="ユーザー名" autocomplete="nickname" /><label class="field-label" for="auth-email">メールアドレス</label><input class="text-input" id="auth-email" type="email" required autocomplete="email" placeholder="you@example.com" /><label class="field-label" for="auth-password">パスワード</label><input class="text-input" id="auth-password" type="password" minlength="8" required autocomplete="current-password" placeholder="8文字以上" /><button class="primary-button full auth-submit" type="submit" id="auth-submit">ログイン</button><p class="auth-message" id="auth-message" role="status"></p></form><p class="microcopy">デモ表示中は、アカウント登録やデータ保存は動作しません。Supabaseの設定後に利用できます。</p></dialog>
+  <script src="/config.js"></script>
+  <script type="module" src="/src.js"></script>
+</body>
+</html>
