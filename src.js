@@ -29,39 +29,104 @@ async function loadAll(){if(!supabase){demoMode();return}state.demo=false;$('#co
 async function loadPosts(){if(state.demo)return;const {data,error}=await supabase.from('study_logs').select('id,user_id,minutes,subject,created_at,profiles(username)').order('created_at',{ascending:false}).limit(30);if(error){showNotice('勉強ログを読み込めませんでした。SupabaseのSQL設定を確認してください。','error');return}const ids=(data||[]).map(p=>p.id);let likes=[],comments=[];if(ids.length){const l=await supabase.from('likes').select('log_id,user_id').in('log_id',ids);likes=l.data||[];const c=await supabase.from('comments').select('id,log_id,user_id,body,created_at,profiles(username)').in('log_id',ids).order('created_at',{ascending:true});comments=c.data||[]}state.posts=(data||[]).map(p=>({...p,username:p.profiles?.username||'student',initial:initials(p.profiles?.username),likes_count:likes.filter(l=>l.log_id===p.id).length,liked:likes.some(l=>l.log_id===p.id&&l.user_id===state.user?.id),comments:comments.filter(c=>c.log_id===p.id)}));renderFeed();}
 function renderFeed(){const list=$('#feed-list');if(!state.posts.length){list.innerHTML='';$('#feed-empty').classList.remove('hidden');return}$('#feed-empty').classList.add('hidden');list.innerHTML=state.posts.map(p=>`<article class="feed-item"><div class="avatar">${escapeHTML(p.initial||initials(p.username))}</div><div class="feed-body"><div class="feed-head"><strong>${escapeHTML(p.username)}</strong><span class="feed-time">${relativeTime(p.created_at)}</span></div><p class="feed-copy">${p.subject?`<b>${escapeHTML(p.subject)}</b> を勉強しました。`:'勉強をがんばりました。'}</p><div class="feed-meta"><span class="duration-chip">◷ ${compactMinutes(p.minutes)}</span></div><div class="feed-actions"><button class="action-button ${p.liked||state.likes.has(p.id)?'liked':''}" data-like="${p.id}">♡ いいね ${p.likes_count||0}</button><button class="action-button" data-comment-toggle="${p.id}">▢ コメント ${(p.comments||[]).length}</button></div><div class="comment-list">${(p.comments||[]).map(c=>`<p class="comment-line"><b>${escapeHTML(c.profiles?.username||c.username||'メンバー')}：</b>${escapeHTML(c.body)}</p>`).join('')}</div><form class="comment-editor" data-comment-form="${p.id}"><input name="body" maxlength="300" placeholder="コメントを書く…" aria-label="コメント" /><button type="submit">送信</button></form></div></article>`).join('');}
 function escapeHTML(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-import { createClient } from '@supabase/supabase-js';
+function escapeHTML(s=''){
+  return String(s).replace(/[&<>"']/g,c=>({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[c]));
+}
 
-const config = window.STUDING_CONFIG || {};
-const configured = Boolean(config.SUPABASE_URL && config.SUPABASE_ANON_KEY && !config.SUPABASE_URL.includes('YOUR_') && !config.SUPABASE_ANON_KEY.includes('YOUR_'));
-const supabase = configured ? createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY) : null;
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => [...document.querySelectorAll(s)];
-const state = { user:null, profile:null, view:'home', timerSeconds:0, timerStartedAt:null, timerInterval:null, paused:false, elapsedBeforePause:0, posts:[], likes:new Set(), comments:{}, rankingPeriod:'week', demo:true };
-const demoProfiles = [
-  {id:'demo-1',username:'haru_study',total:1380,month:760,week:520,today:80,initial:'H'},
-  {id:'demo-2',username:'mikan_23',total:1125,month:690,week:445,today:65,initial:'M'},
-  {id:'demo-3',username:'sora_note',total:970,month:580,week:390,today:45,initial:'S'},
-  {id:'demo-4',username:'study_days',total:720,month:440,week:300,today:35,initial:'D'},
-  {id:'demo-5',username:'blue_pencil',total:610,month:360,week:255,today:25,initial:'B'}
-];
-const demoPosts = [
-  {id:'d1',user_id:'demo-1',username:'haru_study',initial:'H',minutes:50,subject:'数学の問題集',created_at:new Date(Date.now()-1000*60*18).toISOString(),likes_count:4,comments:[{username:'mikan_23',body:'おつかれさま！'}]},
-  {id:'d2',user_id:'demo-2',username:'mikan_23',initial:'M',minutes:35,subject:'英単語と英文法',created_at:new Date(Date.now()-1000*60*70).toISOString(),likes_count:2,comments:[]},
-  {id:'d3',user_id:'demo-3',username:'sora_note',initial:'S',minutes:25,subject:'理科の復習',created_at:new Date(Date.now()-1000*60*180).toISOString(),likes_count:6,comments:[]}
-];
-function initials(name='S'){return [...name.trim()][0]?.toUpperCase()||'S'}
-function minutesText(m){const n=Math.max(0,Math.floor(m||0));return `${Math.floor(n/60)}時間${n%60}分`}
-function compactMinutes(m){const n=Math.max(0,Math.floor(m||0));return n>=60?`${Math.floor(n/60)}h ${n%60}m`:`${n}分`}
-function relativeTime(date){const ms=Date.now()-new Date(date).getTime();if(ms<60000)return 'たった今';if(ms<3600000)return `${Math.floor(ms/60000)}分前`;if(ms<86400000)return `${Math.floor(ms/3600000)}時間前`;return `${Math.floor(ms/86400000)}日前`}
-function showNotice(message,type=''){const n=$('#notice');n.textContent=message;n.className=`notice ${type}`;n.classList.remove('hidden');clearTimeout(showNotice.timeout);showNotice.timeout=setTimeout(()=>n.classList.add('hidden'),6500)}
-function showView(view){state.view=view;const names={home:'みんなの勉強ログ',ranking:'勉強時間ランキング',timer:'勉強タイマー',chat:'みんなのチャット',profile:'マイプロフィール'};$('#page-title').textContent=names[view]||names.home;$('#home-view').classList.toggle('hidden',view!=='home');['ranking','timer','chat','profile'].forEach(v=>$('#'+v+'-view').classList.toggle('hidden',view!==v));$('#public-banner').classList.toggle('hidden',view!=='home');$('#stats-grid').classList.toggle('hidden',view!=='home');$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view==='ranking')renderRanking();if(view==='chat')loadChat();if(view==='profile')renderProfile();window.scrollTo({top:0,behavior:'smooth'})}
-function demoMode(){state.demo=true;$('#connection-label').textContent='デモモード';$('#feed-list').innerHTML='';state.posts=demoPosts;renderFeed();renderStats();renderRanking();renderProfile();renderChatDemo();$('#public-banner').classList.remove('hidden');}
-async function loadAll(){if(!supabase){demoMode();return}state.demo=false;$('#connection-label').textContent='オンライン';const {data:{user}}=await supabase.auth.getUser();state.user=user;if(user){const {data:profile}=await supabase.from('profiles').select('*').eq('id',user.id).maybeSingle();state.profile=profile;if(!profile){const username=(user.user_metadata?.username||user.email?.split('@')[0]||'student').slice(0,24);const result=await supabase.from('profiles').upsert({id:user.id,username}).select().single();state.profile=result.data}}await Promise.all([loadPosts(),renderStats(),renderRanking(),loadChat(),renderProfile()]);updateAccountButton();}
-async function loadPosts(){if(state.demo)return;const {data,error}=await supabase.from('study_logs').select('id,user_id,minutes,subject,created_at,profiles(username)').order('created_at',{ascending:false}).limit(30);if(error){showNotice('勉強ログを読み込めませんでした。SupabaseのSQL設定を確認してください。','error');return}const ids=(data||[]).map(p=>p.id);let likes=[],comments=[];if(ids.length){const l=await supabase.from('likes').select('log_id,user_id').in('log_id',ids);likes=l.data||[];const c=await supabase.from('comments').select('id,log_id,user_id,body,created_at,profiles(username)').in('log_id',ids).order('created_at',{ascending:true});comments=c.data||[]}state.posts=(data||[]).map(p=>({...p,username:p.profiles?.username||'student',initial:initials(p.profiles?.username),likes_count:likes.filter(l=>l.log_id===p.id).length,liked:likes.some(l=>l.log_id===p.id&&l.user_id===state.user?.id),comments:comments.filter(c=>c.log_id===p.id)}));renderFeed();}
-function renderFeed(){const list=$('#feed-list');if(!state.posts.length){list.innerHTML='';$('#feed-empty').classList.remove('hidden');return}$('#feed-empty').classList.add('hidden');list.innerHTML=state.posts.map(p=>`<article class="feed-item"><div class="avatar">${escapeHTML(p.initial||initials(p.username))}</div><div class="feed-body"><div class="feed-head"><strong>${escapeHTML(p.username)}</strong><span class="feed-time">${relativeTime(p.created_at)}</span></div><p class="feed-copy">${p.subject?`<b>${escapeHTML(p.subject)}</b> を勉強しました。`:'勉強をがんばりました。'}</p><div class="feed-meta"><span class="duration-chip">◷ ${compactMinutes(p.minutes)}</span></div><div class="feed-actions"><button class="action-button ${p.liked||state.likes.has(p.id)?'liked':''}" data-like="${p.id}">♡ いいね ${p.likes_count||0}</button><button class="action-button" data-comment-toggle="${p.id}">▢ コメント ${(p.comments||[]).length}</button></div><div class="comment-list">${(p.comments||[]).map(c=>`<p class="comment-line"><b>${escapeHTML(c.profiles?.username||c.username||'メンバー')}：</b>${escapeHTML(c.body)}</p>`).join('')}</div><form class="comment-editor" data-comment-form="${p.id}"><input name="body" maxlength="300" placeholder="コメントを書く…" aria-label="コメント" /><button type="submit">送信</button></form></div></article>`).join('');}
-function escapeHTML(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong>今日の目標</strong><p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p></div><label style="display:flex;gap:8px;align-items:center;font-size:14px">目標 <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px"><option value="15" ${goal===15?'selected':''}>15分</option><option value="30" ${goal===30?'selected':''}>30分</option><option value="45" ${goal===45?'selected':''}>45分</option><option value="60" ${goal===60?'selected':''}>60分</option><option value="90" ${goal===90?'selected':''}>90分</option><option value="120" ${goal===120?'selected':''}>120分</option><option value="180" ${goal===180?'selected':''}>180分</option><option value="240" ${goal===240?'selected':''}>240分</option></select></label></div><div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600"><span>${compactMinutes(done)} / ${goal}分</span><span>${pct}%</span></div><div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div></div>`;
-  const select=$('#daily-goal-select');select.addEventListener('change',()=>{localStorage.setItem(key,String(Number(select.value)));renderDailyGoal(logs)});
+function localDayKey(value){
+  const d=new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function streakFromLogs(logs){
+  const days=[...new Set((logs||[]).map(log=>localDayKey(log.created_at)))].sort().reverse();
+  if(!days.length)return {current:0,days:new Set()};
+
+  const today=localDayKey(new Date());
+  const yesterdayDate=new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate()-1);
+  const yesterday=localDayKey(yesterdayDate);
+
+  if(days[0]!==today&&days[0]!==yesterday){
+    return {current:0,days:new Set(days)};
+  }
+
+  let current=0;
+  let cursor=new Date(`${days[0]}T12:00:00`);
+
+  for(const day of days){
+    if(localDayKey(cursor)!==day)break;
+    current++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+
+  return {current,days:new Set(days)};
+}
+
+function renderDailyGoal(logs=[]){
+  const view=$('#timer-view');
+  if(!view)return;
+
+  if(!state.user||state.demo){
+    $('#daily-goal-card')?.remove();
+    return;
+  }
+
+  let card=$('#daily-goal-card');
+
+  if(!card){
+    card=document.createElement('section');
+    card.id='daily-goal-card';
+    card.className='panel';
+    card.style.cssText='margin:0 0 18px;padding:18px;border-radius:16px;border:1px solid var(--border-color, #e5e7eb)';
+    view.prepend(card);
+  }
+
+  const key=`studing-daily-goal-${state.user.id}`;
+  const saved=Number(localStorage.getItem(key));
+  const goal=Number.isFinite(saved)&&saved>=15&&saved<=240?saved:30;
+
+  const today=localDayKey(new Date());
+  const done=(logs||[])
+    .filter(log=>localDayKey(log.created_at)===today)
+    .reduce((sum,log)=>sum+Number(log.minutes||0),0);
+
+  const pct=Math.min(100,Math.round(done/goal*100));
+
+  card.innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div>
+        <strong>今日の目標</strong>
+        <p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px">
+        目標
+        <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px">
+          ${[15,30,45,60,90,120,180,240].map(n=>`<option value="${n}" ${goal===n?'selected':''}>${n}分</option>`).join('')}
+        </select>
+      </label>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600">
+      <span>${compactMinutes(done)} / ${goal}分</span>
+      <span>${pct}%</span>
+    </div>
+    <div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div>
+    </div>
+  `;
+
+  const select=$('#daily-goal-select');
+
+  select.addEventListener('change',()=>{
+    localStorage.setItem(key,String(Number(select.value)));
+    renderDailyGoal(logs);
+  });
 }
 function updateAccountButton(){$('#account-label').textContent=state.user?(state.profile?.username||'マイページ'):'ログイン';$('#account-button .avatar').textContent=state.user?initials(state.profile?.username):'S';$('#chat-input').disabled=!state.user;$('#chat-send').disabled=!state.user;$('#chat-access-label').textContent=state.user?'オンラインチャット':'ログインが必要です'}
 function openAuth(mode='login'){setAuthMode(mode);$('#auth-message').textContent='';$('#auth-dialog').showModal()}
