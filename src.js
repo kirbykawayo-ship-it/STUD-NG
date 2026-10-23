@@ -29,95 +29,48 @@ async function loadAll(){if(!supabase){demoMode();return}state.demo=false;$('#co
 async function loadPosts(){if(state.demo)return;const {data,error}=await supabase.from('study_logs').select('id,user_id,minutes,subject,created_at,profiles(username)').order('created_at',{ascending:false}).limit(30);if(error){showNotice('勉強ログを読み込めませんでした。SupabaseのSQL設定を確認してください。','error');return}const ids=(data||[]).map(p=>p.id);let likes=[],comments=[];if(ids.length){const l=await supabase.from('likes').select('log_id,user_id').in('log_id',ids);likes=l.data||[];const c=await supabase.from('comments').select('id,log_id,user_id,body,created_at,profiles(username)').in('log_id',ids).order('created_at',{ascending:true});comments=c.data||[]}state.posts=(data||[]).map(p=>({...p,username:p.profiles?.username||'student',initial:initials(p.profiles?.username),likes_count:likes.filter(l=>l.log_id===p.id).length,liked:likes.some(l=>l.log_id===p.id&&l.user_id===state.user?.id),comments:comments.filter(c=>c.log_id===p.id)}));renderFeed();}
 function renderFeed(){const list=$('#feed-list');if(!state.posts.length){list.innerHTML='';$('#feed-empty').classList.remove('hidden');return}$('#feed-empty').classList.add('hidden');list.innerHTML=state.posts.map(p=>`<article class="feed-item"><div class="avatar">${escapeHTML(p.initial||initials(p.username))}</div><div class="feed-body"><div class="feed-head"><strong>${escapeHTML(p.username)}</strong><span class="feed-time">${relativeTime(p.created_at)}</span></div><p class="feed-copy">${p.subject?`<b>${escapeHTML(p.subject)}</b> を勉強しました。`:'勉強をがんばりました。'}</p><div class="feed-meta"><span class="duration-chip">◷ ${compactMinutes(p.minutes)}</span></div><div class="feed-actions"><button class="action-button ${p.liked||state.likes.has(p.id)?'liked':''}" data-like="${p.id}">♡ いいね ${p.likes_count||0}</button><button class="action-button" data-comment-toggle="${p.id}">▢ コメント ${(p.comments||[]).length}</button></div><div class="comment-list">${(p.comments||[]).map(c=>`<p class="comment-line"><b>${escapeHTML(c.profiles?.username||c.username||'メンバー')}：</b>${escapeHTML(c.body)}</p>`).join('')}</div><form class="comment-editor" data-comment-form="${p.id}"><input name="body" maxlength="300" placeholder="コメントを書く…" aria-label="コメント" /><button type="submit">送信</button></form></div></article>`).join('');}
 function escapeHTML(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-
-function localDayKey(value){
-  const d=new Date(value);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+async function renderStats(){let today=0,week=0,members=demoProfiles.length;if(state.demo){today=demoProfiles.reduce((s,p)=>s+p.today,0);week=demoProfiles.reduce((s,p)=>s+p.week,0)}else{const now=new Date();const startDay=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();const startWeek=new Date(now);const offset=(now.getDay()+6)%7;startWeek.setDate(now.getDate()-offset);startWeek.setHours(0,0,0,0);const [t,w,m]=await Promise.all([supabase.from('study_logs').select('minutes').gte('created_at',startDay),supabase.from('study_logs').select('minutes').gte('created_at',startWeek.toISOString()),supabase.from('profiles').select('id',{count:'exact',head:true})]);today=(t.data||[]).reduce((s,x)=>s+x.minutes,0);week=(w.data||[]).reduce((s,x)=>s+x.minutes,0);members=m.count||0}$('#stat-today').innerHTML=`${today.toLocaleString()}<span>分</span>`;$('#stat-week').innerHTML=`${week.toLocaleString()}<span>分</span>`;$('#stat-members').innerHTML=`${members}<span>人</span>`}
+function setupRankingPeriods(){const select=$('#ranking-period');if(!select)return;const current=['today','week','month','all'].includes(select.value)?select.value:'week';select.innerHTML='<option value="today">日</option><option value="week">週</option><option value="month">月</option><option value="all">全期間</option>';select.value=current;select.setAttribute('aria-label','ランキングの期間');}
+async function getRanking(period){
+  if(state.demo){const key=period==='today'?'today':period==='week'?'week':period==='month'?'month':'total';return demoProfiles.map(p=>({...p,minutes:p[key]||0})).sort((a,b)=>b.minutes-a.minutes)}
+  const {data:profiles,error:profileError}=await supabase.from('profiles').select('id,username');
+  if(profileError){showNotice('ランキングを読み込めませんでした。','error');return []}
+  let start=null;const now=new Date();
+  if(period==='today')start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  else if(period==='week'){start=new Date(now.getFullYear(),now.getMonth(),now.getDate());start.setDate(start.getDate()-((start.getDay()+6)%7));}
+  else if(period==='month')start=new Date(now.getFullYear(),now.getMonth(),1);
+  let query=supabase.from('study_logs').select('user_id,minutes');
+  if(start)query=query.gte('created_at',start.toISOString());
+  const {data:logs,error}=await query;
+  if(error){showNotice('勉強時間を集計できませんでした。','error');return []}
+  const sums={};(logs||[]).forEach(log=>{sums[log.user_id]=(sums[log.user_id]||0)+Number(log.minutes||0)});
+  return (profiles||[]).map(profile=>({id:profile.id,username:profile.username,initial:initials(profile.username),minutes:sums[profile.id]||0})).sort((a,b)=>b.minutes-a.minutes||a.username.localeCompare(b.username,'ja'));
 }
-
+async function renderRanking(){
+  const period=$('#ranking-period')?.value||'week';const labels={today:'今日',week:'今週',month:'今月',all:'全期間'};
+  const ranking=await getRanking(period);const mini=(await getRanking('week')).slice(0,4);
+  $('#mini-ranking').innerHTML=mini.map((p,i)=>`<div class="rank-row"><span class="rank-number ${i<3?'top':''}">${String(i+1).padStart(2,'0')}</span><span class="avatar">${escapeHTML(p.initial||initials(p.username))}</span><div class="rank-name"><strong>${escapeHTML(p.username)}</strong><small>${i===0?'今週のトップ':i===1?'いいペース！':'継続中'}</small></div><span class="rank-value">${compactMinutes(p.minutes)}</span></div>`).join('');
+  const max=Math.max(1,...ranking.map(p=>p.minutes));
+  $('#full-ranking').innerHTML=ranking.map((p,i)=>`<div class="full-rank-row"><span class="rank-number ${i<3?'top':''}">${i+1}</span><span class="avatar">${escapeHTML(p.initial||initials(p.username))}</span><div class="rank-main"><strong>${escapeHTML(p.username)}</strong><small>${i===0?`${labels[period]}のトップ`:'勉強を継続中'}</small><div class="rank-progress"><span style="width:${Math.max(0,p.minutes/max*100)}%"></span></div></div><span class="rank-total">${compactMinutes(p.minutes)}</span></div>`).join('')||'<p class="muted">まだランキングがありません。</p>';
+}
+function localDayKey(value){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function streakFromLogs(logs){
   const days=[...new Set((logs||[]).map(log=>localDayKey(log.created_at)))].sort().reverse();
   if(!days.length)return {current:0,days:new Set()};
-
-  const today=localDayKey(new Date());
-  const yesterdayDate=new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate()-1);
-  const yesterday=localDayKey(yesterdayDate);
-
-  if(days[0]!==today&&days[0]!==yesterday){
-    return {current:0,days:new Set(days)};
-  }
-
-  let current=0;
-  let cursor=new Date(`${days[0]}T12:00:00`);
-
-  for(const day of days){
-    if(localDayKey(cursor)!==day)break;
-    current++;
-    cursor.setDate(cursor.getDate()-1);
-  }
-
+  const today=localDayKey(new Date());const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);const yesterday=localDayKey(yesterdayDate);
+  if(days[0]!==today&&days[0]!==yesterday)return {current:0,days:new Set(days)};
+  let current=0;let cursor=new Date(`${days[0]}T12:00:00`);
+  for(const day of days){if(localDayKey(cursor)!==day)break;current++;cursor.setDate(cursor.getDate()-1)}
   return {current,days:new Set(days)};
 }
-
 function renderDailyGoal(logs=[]){
-  const view=$('#timer-view');
-  if(!view)return;
-
-  if(!state.user||state.demo){
-    $('#daily-goal-card')?.remove();
-    return;
-  }
-
-  let card=$('#daily-goal-card');
-
-  if(!card){
-    card=document.createElement('section');
-    card.id='daily-goal-card';
-    card.className='panel';
-    card.style.cssText='margin:0 0 18px;padding:18px;border-radius:16px;border:1px solid var(--border-color, #e5e7eb)';
-    view.prepend(card);
-  }
-
-  const key=`studing-daily-goal-${state.user.id}`;
-  const saved=Number(localStorage.getItem(key));
-  const goal=Number.isFinite(saved)&&saved>=15&&saved<=240?saved:30;
-
-  const today=localDayKey(new Date());
-  const done=(logs||[])
-    .filter(log=>localDayKey(log.created_at)===today)
-    .reduce((sum,log)=>sum+Number(log.minutes||0),0);
-
-  const pct=Math.min(100,Math.round(done/goal*100));
-
-  card.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-      <div>
-        <strong>今日の目標</strong>
-        <p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p>
-      </div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px">
-        目標
-        <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px">
-          ${[15,30,45,60,90,120,180,240].map(n=>`<option value="${n}" ${goal===n?'selected':''}>${n}分</option>`).join('')}
-        </select>
-      </label>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600">
-      <span>${compactMinutes(done)} / ${goal}分</span>
-      <span>${pct}%</span>
-    </div>
-    <div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div>
-    </div>
-  `;
-
-  const select=$('#daily-goal-select');
-
-  select.addEventListener('change',()=>{
-    localStorage.setItem(key,String(Number(select.value)));
-    renderDailyGoal(logs);
-  });
+  const view=$('#timer-view');if(!view)return;
+  if(!state.user||state.demo){$('#daily-goal-card')?.remove();return}
+  let card=$('#daily-goal-card');if(!card){card=document.createElement('section');card.id='daily-goal-card';card.className='panel';card.style.cssText='margin:0 0 18px;padding:18px;border-radius:16px;border:1px solid var(--border-color, #e5e7eb)';view.prepend(card)}
+  const key=`studing-daily-goal-${state.user.id}`;const saved=Number(localStorage.getItem(key));const goal=Number.isFinite(saved)&&saved>=15&&saved<=240?saved:30;
+  const today=localDayKey(new Date());const done=(logs||[]).filter(log=>localDayKey(log.created_at)===today).reduce((sum,log)=>sum+Number(log.minutes||0),0);const pct=Math.min(100,Math.round(done/goal*100));
+  card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong>今日の目標</strong><p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p></div><label style="display:flex;gap:8px;align-items:center;font-size:14px">目標 <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px"><option value="15" ${goal===15?'selected':''}>15分</option><option value="30" ${goal===30?'selected':''}>30分</option><option value="45" ${goal===45?'selected':''}>45分</option><option value="60" ${goal===60?'selected':''}>60分</option><option value="90" ${goal===90?'selected':''}>90分</option><option value="120" ${goal===120?'selected':''}>120分</option><option value="180" ${goal===180?'selected':''}>180分</option><option value="240" ${goal===240?'selected':''}>240分</option></select></label></div><div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600"><span>${compactMinutes(done)} / ${goal}分</span><span>${pct}%</span></div><div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div></div>`;
+  const select=$('#daily-goal-select');select.addEventListener('change',()=>{localStorage.setItem(key,String(Number(select.value)));renderDailyGoal(logs)});
 }
 function updateAccountButton(){$('#account-label').textContent=state.user?(state.profile?.username||'マイページ'):'ログイン';$('#account-button .avatar').textContent=state.user?initials(state.profile?.username):'S';$('#chat-input').disabled=!state.user;$('#chat-send').disabled=!state.user;$('#chat-access-label').textContent=state.user?'オンラインチャット':'ログインが必要です'}
 function openAuth(mode='login'){setAuthMode(mode);$('#auth-message').textContent='';$('#auth-dialog').showModal()}
@@ -185,7 +138,7 @@ function openRecoveryDialog(){
         setTimeout(()=>{if(dialog.open)dialog.close();openAuth('login');},1200);
       }catch(err){
         message.textContent=err.message||'変更できませんでした。再設定メールからやり直してください。';
-              }finally{
+      }finally{
         button.disabled=false;
       }
     });
