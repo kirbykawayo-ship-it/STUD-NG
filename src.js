@@ -53,160 +53,29 @@ async function renderRanking(){
   const max=Math.max(1,...ranking.map(p=>p.minutes));
   $('#full-ranking').innerHTML=ranking.map((p,i)=>`<div class="full-rank-row"><span class="rank-number ${i<3?'top':''}">${i+1}</span>${avatarHTML(p.avatar_url,p.username)}<div class="rank-main"><strong>${escapeHTML(p.username)}</strong> <button type="button" class="secondary-button" data-open-user="${p.id}" style="padding:3px 7px;font-size:12px">プロフィール</button><small>${i===0?`${labels[period]}のトップ`:'勉強を継続中'}</small><div class="rank-progress"><span style="width:${Math.max(0,p.minutes/max*100)}%"></span></div></div><span class="rank-total">${compactMinutes(p.minutes)}</span></div>`).join('')||'<p class="muted">まだランキングがありません。</p>';
 }
-function localDayKey(value){
-  const d=new Date(value);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
+function localDayKey(value){const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function streakFromLogs(logs){
   const days=[...new Set((logs||[]).map(log=>localDayKey(log.created_at)))].sort().reverse();
   if(!days.length)return {current:0,days:new Set()};
-  const today=localDayKey(new Date());
-  const yesterdayDate=new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate()-1);
-  const yesterday=localDayKey(yesterdayDate);
+  const today=localDayKey(new Date());const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);const yesterday=localDayKey(yesterdayDate);
   if(days[0]!==today&&days[0]!==yesterday)return {current:0,days:new Set(days)};
-  let current=0;
-  let cursor=new Date(`${days[0]}T12:00:00`);
-  for(const day of days){
-    if(localDayKey(cursor)!==day)break;
-    current++;
-    cursor.setDate(cursor.getDate()-1);
-  }
+  let current=0;let cursor=new Date(`${days[0]}T12:00:00`);
+  for(const day of days){if(localDayKey(cursor)!==day)break;current++;cursor.setDate(cursor.getDate()-1)}
   return {current,days:new Set(days)};
 }
-
 function renderDailyGoal(logs=[]){
-  const view=$('#timer-view');
-  if(!view)return;
-  if(!state.user||state.demo){
-    $('#daily-goal-card')?.remove();
-    return;
-  }
-  let card=$('#daily-goal-card');
-  if(!card){
-    card=document.createElement('section');
-    card.id='daily-goal-card';
-    card.className='panel';
-    card.style.cssText='margin:0 0 18px;padding:18px;border-radius:16px;border:1px solid var(--border-color, #e5e7eb)';
-    view.prepend(card);
-  }
-  const key=`studing-daily-goal-${state.user.id}`;
-  const saved=Number(localStorage.getItem(key));
-  const goal=Number.isFinite(saved)&&saved>=15&&saved<=240?saved:30;
-  const today=localDayKey(new Date());
-  const done=(logs||[])
-    .filter(log=>localDayKey(log.created_at)===today)
-    .reduce((sum,log)=>sum+Number(log.minutes||0),0);
-  const pct=Math.min(100,Math.round(done/goal*100));
-
-  card.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-      <div>
-        <strong>今日の目標</strong>
-        <p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p>
-      </div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px">
-        目標
-        <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px">
-          <option value="15" ${goal===15?'selected':''}>15分</option>
-          <option value="30" ${goal===30?'selected':''}>30分</option>
-          <option value="45" ${goal===45?'selected':''}>45分</option>
-          <option value="60" ${goal===60?'selected':''}>60分</option>
-          <option value="90" ${goal===90?'selected':''}>90分</option>
-          <option value="120" ${goal===120?'selected':''}>120分</option>
-          <option value="180" ${goal===180?'selected':''}>180分</option>
-          <option value="240" ${goal===240?'selected':''}>240分</option>
-        </select>
-      </label>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600">
-      <span>${compactMinutes(done)} / ${goal}分</span>
-      <span>${pct}%</span>
-    </div>
-    <div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div>
-    </div>`;
-
-  const select=$('#daily-goal-select');
-  select.addEventListener('change',()=>{
-    localStorage.setItem(key,String(Number(select.value)));
-    renderDailyGoal(logs);
-  });
+  const view=$('#timer-view');if(!view)return;
+  if(!state.user||state.demo){$('#daily-goal-card')?.remove();return}
+  let card=$('#daily-goal-card');if(!card){card=document.createElement('section');card.id='daily-goal-card';card.className='panel';card.style.cssText='margin:0 0 18px;padding:18px;border-radius:16px;border:1px solid var(--border-color, #e5e7eb)';view.prepend(card)}
+  const key=`studing-daily-goal-${state.user.id}`;const saved=Number(localStorage.getItem(key));const goal=Number.isFinite(saved)&&saved>=15&&saved<=240?saved:30;
+  const today=localDayKey(new Date());const done=(logs||[]).filter(log=>localDayKey(log.created_at)===today).reduce((sum,log)=>sum+Number(log.minutes||0),0);const pct=Math.min(100,Math.round(done/goal*100));
+  card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong>今日の目標</strong><p class="muted" style="margin:5px 0 0">無理のない目標で、少しずつ積み重ねよう。</p></div><label style="display:flex;gap:8px;align-items:center;font-size:14px">目標 <select id="daily-goal-select" class="text-input" style="width:auto;padding:7px"><option value="15" ${goal===15?'selected':''}>15分</option><option value="30" ${goal===30?'selected':''}>30分</option><option value="45" ${goal===45?'selected':''}>45分</option><option value="60" ${goal===60?'selected':''}>60分</option><option value="90" ${goal===90?'selected':''}>90分</option><option value="120" ${goal===120?'selected':''}>120分</option><option value="180" ${goal===180?'selected':''}>180分</option><option value="240" ${goal===240?'selected':''}>240分</option></select></label></div><div style="display:flex;justify-content:space-between;margin:14px 0 7px;font-weight:600"><span>${compactMinutes(done)} / ${goal}分</span><span>${pct}%</span></div><div style="height:9px;border-radius:999px;background:var(--border-color,#e5e7eb);overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent,#64748b);border-radius:999px;transition:width .25s"></div></div>`;
+  const select=$('#daily-goal-select');select.addEventListener('change',()=>{localStorage.setItem(key,String(Number(select.value)));renderDailyGoal(logs)});
 }
-
-function updateAccountButton(){
-  $('#account-label').textContent=state.user?(state.profile?.username||'マイページ'):'ログイン';
-  $('#account-button .avatar').textContent=state.user?initials(state.profile?.username):'S';
-  $('#chat-input').disabled=!state.user;
-  $('#chat-send').disabled=!state.user;
-  $('#chat-access-label').textContent=state.user?'オンラインチャット':'ログインが必要です';
-}
-
-function openAuth(mode='login'){
-  setAuthMode(mode);
-  $('#auth-message').textContent='';
-  $('#auth-dialog').showModal();
-}
-
-function setAuthMode(mode){
-  const signup=mode==='signup';
-  $('#login-tab').classList.toggle('active',!signup);
-  $('#signup-tab').classList.toggle('active',signup);
-  $('#auth-title').textContent=signup?'アカウントを作成':'おかえりなさい';
-  $('#auth-subtitle').textContent=signup
-    ?'ユーザー名を決めて、勉強記録を始めよう。'
-    :'ログインして勉強を記録しよう。';
-  $('#auth-username').classList.toggle('hidden',!signup);
-  $('#username-label').classList.toggle('hidden',!signup);
-  $('#auth-username').required=signup;
-  $('#auth-password').autocomplete=signup?'new-password':'current-password';
-  $('#auth-submit').textContent=signup?'新規登録':'ログイン';
-  $('#auth-form').dataset.mode=mode;
-}
-
-async function authSubmit(e){
-  e.preventDefault();
-  if(!supabase){
-    $('#auth-message').textContent='Supabaseの設定がまだ完了していません。READMEの手順に沿って設定してください。';
-    return;
-  }
-  const mode=$('#auth-form').dataset.mode;
-  const email=$('#auth-email').value.trim();
-  const password=$('#auth-password').value;
-  const username=$('#auth-username').value.trim();
-  $('#auth-submit').disabled=true;
-  $('#auth-message').textContent='処理中…';
-  try{
-    if(mode==='signup'){
-      if(username.length<2)throw new Error('ユーザー名は2文字以上で入力してください。');
-      const {data,error}=await supabase.auth.signUp({
-        email,
-        password,
-        options:{data:{username}}
-      });
-      if(error)throw error;
-      if(data.session){
-        $('#auth-dialog').close();
-        showNotice('アカウントを作成しました。','success');
-        await loadAll();
-      }else{
-        $('#auth-message').textContent='確認メールを送信しました。メール内のリンクから登録を完了してください。';
-      }
-    }else{
-      const {error}=await supabase.auth.signInWithPassword({email,password});
-      if(error)throw error;
-      $('#auth-dialog').close();
-      showNotice('ログインしました。','success');
-      await loadAll();
-    }
-  }catch(err){
-    $('#auth-message').textContent=err.message||'認証に失敗しました。';
-  }finally{
-    $('#auth-submit').disabled=false;
-  }
-}
-
+function updateAccountButton(){$('#account-label').textContent=state.user?(state.profile?.username||'マイページ'):'ログイン';$('#account-button .avatar').textContent=state.user?initials(state.profile?.username):'S';$('#chat-input').disabled=!state.user;$('#chat-send').disabled=!state.user;$('#chat-access-label').textContent=state.user?'オンラインチャット':'ログインが必要です'}
+function openAuth(mode='login'){setAuthMode(mode);$('#auth-message').textContent='';$('#auth-dialog').showModal()}
+function setAuthMode(mode){const signup=mode==='signup';$('#login-tab').classList.toggle('active',!signup);$('#signup-tab').classList.toggle('active',signup);$('#auth-title').textContent=signup?'アカウントを作成':'おかえりなさい';$('#auth-subtitle').textContent=signup?'ユーザー名を決めて、勉強記録を始めよう。':'ログインして勉強を記録しよう。';$('#auth-username').classList.toggle('hidden',!signup);$('#username-label').classList.toggle('hidden',!signup);$('#auth-username').required=signup;$('#auth-password').autocomplete=signup?'new-password':'current-password';$('#auth-submit').textContent=signup?'新規登録':'ログイン';$('#auth-form').dataset.mode=mode}
+async function authSubmit(e){e.preventDefault();if(!supabase){$('#auth-message').textContent='Supabaseの設定がまだ完了していません。READMEの手順に沿って設定してください。';return}const mode=$('#auth-form').dataset.mode,email=$('#auth-email').value.trim(),password=$('#auth-password').value,username=$('#auth-username').value.trim();$('#auth-submit').disabled=true;$('#auth-message').textContent='処理中…';try{if(mode==='signup'){if(username.length<2)throw new Error('ユーザー名は2文字以上で入力してください。');const {data,error}=await supabase.auth.signUp({email,password,options:{data:{username}}});if(error)throw error;if(data.session){$('#auth-dialog').close();showNotice('アカウントを作成しました。','success');await loadAll()}else{$('#auth-message').textContent='確認メールを送信しました。メール内のリンクから登録を完了してください。'}}else{const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;$('#auth-dialog').close();showNotice('ログインしました。','success');await loadAll()}}catch(err){$('#auth-message').textContent=err.message||'認証に失敗しました。'}finally{$('#auth-submit').disabled=false}}
 async function sendPasswordReset(){
   if(!supabase){
     $('#auth-message').textContent='Supabaseの設定がまだ完了していません。';
@@ -222,10 +91,7 @@ async function sendPasswordReset(){
   button.disabled=true;
   $('#auth-message').textContent='再設定メールを送信中…';
   try{
-    const {error}=await supabase.auth.resetPasswordForEmail(
-      email,
-      {redirectTo:window.location.origin}
-    );
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
     if(error)throw error;
     $('#auth-message').textContent='再設定メールを送信しました。受信箱と迷惑メールを確認してください。';
   }catch(err){
@@ -236,76 +102,40 @@ async function sendPasswordReset(){
 }
 function openRecoveryDialog(){
   if(!supabase)return;
-
   let dialog=$('#recovery-dialog');
-
   if(!dialog){
     dialog=document.createElement('dialog');
     dialog.id='recovery-dialog';
     dialog.className='auth-dialog';
-
-    dialog.innerHTML=`
-      <form method="dialog" class="dialog-close-row">
-        <button class="close-button" aria-label="閉じる">×</button>
-      </form>
-      <div class="auth-brand">
-        <span class="brand-mark">S</span>
-        <span>STUDING</span>
-      </div>
+    dialog.innerHTML=`<form method="dialog" class="dialog-close-row"><button class="close-button" aria-label="閉じる">×</button></form>
+      <div class="auth-brand"><span class="brand-mark">S</span><span>STUDING</span></div>
       <h2>新しいパスワード</h2>
       <p class="muted">新しく使うパスワードを入力してください。</p>
       <form id="recovery-form">
-        <label class="field-label" for="recovery-password">
-          新しいパスワード（8文字以上）
-        </label>
-        <input class="text-input" id="recovery-password"
-          type="password" minlength="8" required
-          autocomplete="new-password" placeholder="8文字以上">
-        <label class="field-label" for="recovery-password-confirm">
-          パスワード（確認）
-        </label>
-        <input class="text-input" id="recovery-password-confirm"
-          type="password" minlength="8" required
-          autocomplete="new-password" placeholder="もう一度入力">
-        <button class="primary-button full auth-submit"
-          type="submit" id="recovery-submit">パスワードを変更</button>
+        <label class="field-label" for="recovery-password">新しいパスワード（8文字以上）</label>
+        <input class="text-input" id="recovery-password" type="password" minlength="8" required autocomplete="new-password" placeholder="8文字以上">
+        <label class="field-label" for="recovery-password-confirm">パスワード（確認）</label>
+        <input class="text-input" id="recovery-password-confirm" type="password" minlength="8" required autocomplete="new-password" placeholder="もう一度入力">
+        <button class="primary-button full auth-submit" type="submit" id="recovery-submit">パスワードを変更</button>
         <p class="auth-message" id="recovery-message" role="status"></p>
       </form>`;
-
     document.body.appendChild(dialog);
-
     dialog.querySelector('#recovery-form').addEventListener('submit',async e=>{
       e.preventDefault();
-
       const password=dialog.querySelector('#recovery-password').value;
       const confirmation=dialog.querySelector('#recovery-password-confirm').value;
       const message=dialog.querySelector('#recovery-message');
       const button=dialog.querySelector('#recovery-submit');
-
-      if(password.length<8){
-        message.textContent='パスワードは8文字以上にしてください。';
-        return;
-      }
-
-      if(password!==confirmation){
-        message.textContent='2つのパスワードが一致しません。';
-        return;
-      }
-
+      if(password.length<8){message.textContent='パスワードは8文字以上にしてください。';return;}
+      if(password!==confirmation){message.textContent='2つのパスワードが一致しません。';return;}
       button.disabled=true;
       message.textContent='変更中…';
-
       try{
         const {error}=await supabase.auth.updateUser({password});
         if(error)throw error;
-
         message.textContent='パスワードを変更しました。ログインできます。';
         dialog.querySelector('#recovery-form').reset();
-
-        setTimeout(()=>{
-          if(dialog.open)dialog.close();
-          openAuth('login');
-        },1200);
+        setTimeout(()=>{if(dialog.open)dialog.close();openAuth('login');},1200);
       }catch(err){
         message.textContent=err.message||'変更できませんでした。再設定メールからやり直してください。';
       }finally{
@@ -313,222 +143,24 @@ function openRecoveryDialog(){
       }
     });
   }
-
   if(!dialog.open)dialog.showModal();
 }
-
-// 勉強タイマー
-function formatTimer(seconds){
-  const h=Math.floor(seconds/3600);
-  const m=Math.floor(seconds%3600/60);
-  const s=seconds%60;
-
-  return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
-}
-
-function updateTimer(){
-  let seconds=state.elapsedBeforePause;
-
-  if(state.timerStartedAt&&!state.paused){
-    seconds+=Math.floor((Date.now()-state.timerStartedAt)/1000);
-  }
-
-  state.timerSeconds=seconds;
-  $('#timer-display').textContent=formatTimer(seconds);
-
-  const running=Boolean(state.timerStartedAt&&!state.paused);
-
-  $('#timer-status').classList.toggle('running',running);
-  $('#timer-status').innerHTML=`
-    <span></span>
-    ${running?'集中中':state.paused?'一時停止中':'記録待機中'}
-  `;
-
-  $('#save-session').disabled=seconds<60;
-  $('#timer-pause').disabled=!state.timerStartedAt;
-  $('#timer-start').disabled=Boolean(state.timerStartedAt&&!state.paused);
-  $('#timer-start').textContent=state.paused?'▶ 再開':'▶ スタート';
-}
-
-function startTimer(){
-  if(state.paused){
-    state.timerStartedAt=Date.now();
-    state.paused=false;
-  }else if(!state.timerStartedAt){
-    state.timerStartedAt=Date.now();
-    state.elapsedBeforePause=0;
-  }
-
-  clearInterval(state.timerInterval);
-  state.timerInterval=setInterval(updateTimer,500);
-  updateTimer();
-}
-
-function pauseTimer(){
-  if(!state.timerStartedAt||state.paused)return;
-
-  state.elapsedBeforePause+=Math.floor(
-    (Date.now()-state.timerStartedAt)/1000
-  );
-
-  state.timerStartedAt=null;
-  state.paused=true;
-
-  clearInterval(state.timerInterval);
-  updateTimer();
-}
-
-function resetTimer(){
-  clearInterval(state.timerInterval);
-
-  state.timerStartedAt=null;
-  state.elapsedBeforePause=0;
-  state.timerSeconds=0;
-  state.paused=false;
-
-  updateTimer();
-}
-
-// 勉強記録を保存
-async function saveStudy(minutes,subject){
-  if(!state.user){
-    openAuth();
-    showNotice('勉強時間を保存するにはログインしてください。');
-    return false;
-  }
-
-  if(!supabase)return false;
-
-  const {error}=await supabase.from('study_logs').insert({
-    user_id:state.user.id,
-    minutes,
-    subject:subject.trim()||null
-  });
-
-  if(error){
-    showNotice(`保存できませんでした：${error.message}`,'error');
-    return false;
-  }
-
-  showNotice(`${minutes}分の勉強記録を保存しました。`,'success');
-
-  await Promise.all([
-    loadPosts(),
-    renderStats(),
-    renderRanking(),
-    renderProfile()
-  ]);
-
-  return true;
-}
-
-// グループチャット
-async function loadChat(){
-  if(state.demo){
-    renderChatDemo();
-    return;
-  }
-
-  const {data,error}=await supabase
-    .from('messages')
-    .select('id,user_id,body,created_at,profiles(username)')
-    .order('created_at',{ascending:true})
-    .limit(100);
-
-  if(error){
-    $('#chat-messages').innerHTML=
-      '<p class="muted">チャットを読み込めません。SQL設定を確認してください。</p>';
-    return;
-  }
-
-  renderChat(data||[]);
-}
-
-function renderChatDemo(){
-  renderChat([
-    {
-      id:'m1',
-      user_id:'demo-1',
-      body:'今日は数学を50分進めた！',
-      created_at:new Date(Date.now()-3600000).toISOString(),
-      profiles:{username:'haru_study'}
-    },
-    {
-      id:'m2',
-      user_id:'demo-2',
-      body:'おつかれさま！自分もこれから始めます。',
-      created_at:new Date(Date.now()-1800000).toISOString(),
-      profiles:{username:'mikan_23'}
-    }
-  ]);
-}
-
-function renderChat(messages){
-  $('#chat-messages').innerHTML=messages.length
-    ?messages.map(m=>`
-      <div class="chat-line">
-        <span class="avatar">${escapeHTML(initials(m.profiles?.username||'S'))}</span>
-        <div class="chat-bubble">
-          <strong>${escapeHTML(m.profiles?.username||'メンバー')}</strong>
-          ${escapeHTML(m.body)}
-          <small>${relativeTime(m.created_at)}</small>
-        </div>
-      </div>
-    `).join('')
-    :`
-      <div class="empty-state">
-        <div class="empty-icon">▤</div>
-        <strong>最初のメッセージを送ろう</strong>
-        <p>勉強の相談や励ましを共有できます。</p>
-      </div>
-    `;
-
-  $('#chat-messages').scrollTop=$('#chat-messages').scrollHeight;
-}
-
-// プロフィール画面
+function formatTimer(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return [h,m,sec].map(v=>String(v).padStart(2,'0')).join(':')}
+function updateTimer(){let s=state.elapsedBeforePause;if(state.timerStartedAt&&!state.paused)s+=Math.floor((Date.now()-state.timerStartedAt)/1000);state.timerSeconds=s;$('#timer-display').textContent=formatTimer(s);$('#timer-status').classList.toggle('running',Boolean(state.timerStartedAt&&!state.paused));$('#timer-status').innerHTML=`<span></span>${state.timerStartedAt&&!state.paused?'集中中':state.paused?'一時停止中':'記録待機中'}`;$('#save-session').disabled=s<60;$('#timer-pause').disabled=!state.timerStartedAt;$('#timer-start').disabled=Boolean(state.timerStartedAt&&!state.paused);$('#timer-start').textContent=state.paused?'▶ 再開':'▶ スタート'}
+function startTimer(){if(state.paused){state.timerStartedAt=Date.now();state.paused=false}else if(!state.timerStartedAt){state.timerStartedAt=Date.now();state.elapsedBeforePause=0}clearInterval(state.timerInterval);state.timerInterval=setInterval(updateTimer,500);updateTimer()}
+function pauseTimer(){if(!state.timerStartedAt||state.paused)return;state.elapsedBeforePause+=Math.floor((Date.now()-state.timerStartedAt)/1000);state.timerStartedAt=null;state.paused=true;clearInterval(state.timerInterval);updateTimer()}
+function resetTimer(){clearInterval(state.timerInterval);state.timerStartedAt=null;state.elapsedBeforePause=0;state.timerSeconds=0;state.paused=false;updateTimer()}
+async function saveStudy(minutes,subject){if(!state.user){openAuth();showNotice('勉強時間を保存するにはログインしてください。');return false}if(!supabase)return false;const {error}=await supabase.from('study_logs').insert({user_id:state.user.id,minutes,subject:subject.trim()||null});if(error){showNotice(`保存できませんでした：${error.message}`,'error');return false}showNotice(`${minutes}分の勉強記録を保存しました。`,'success');await Promise.all([loadPosts(),renderStats(),renderRanking(),renderProfile()]);return true}
+async function loadChat(){if(state.demo){renderChatDemo();return}const {data,error}=await supabase.from('messages').select('id,user_id,body,created_at,profiles(username)').order('created_at',{ascending:true}).limit(100);if(error){$('#chat-messages').innerHTML='<p class="muted">チャットを読み込めません。SQL設定を確認してください。</p>';return}renderChat(data||[])}
+function renderChatDemo(){renderChat([{id:'m1',user_id:'demo-1',body:'今日は数学を50分進めた！',created_at:new Date(Date.now()-3600000).toISOString(),profiles:{username:'haru_study'}},{id:'m2',user_id:'demo-2',body:'おつかれさま！自分もこれから始めます。',created_at:new Date(Date.now()-1800000).toISOString(),profiles:{username:'mikan_23'}}])}
+function renderChat(messages){$('#chat-messages').innerHTML=messages.length?messages.map(m=>`<div class="chat-line"><span class="avatar">${escapeHTML(initials(m.profiles?.username||'S'))}</span><div class="chat-bubble"><strong>${escapeHTML(m.profiles?.username||'メンバー')}</strong>${escapeHTML(m.body)}<small>${relativeTime(m.created_at)}</small></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">▤</div><strong>最初のメッセージを送ろう</strong><p>勉強の相談や励ましを共有できます。</p></div>';$('#chat-messages').scrollTop=$('#chat-messages').scrollHeight}
 async function renderProfile(){
   const root=$('#profile-content');
-
-  if(!state.user){
-    root.innerHTML=`
-      <div class="empty-state">
-        <div class="empty-icon">◎</div>
-        <strong>ログインしてください</strong>
-        <p>アカウントを作成すると、勉強記録を管理できます。</p>
-        <button class="primary-button" id="profile-login-inner">
-          ログイン / 登録
-        </button>
-      </div>`;
-
-    renderDailyGoal([]);
-    return;
-  }
-
+  if(!state.user){root.innerHTML='<div class="empty-state"><div class="empty-icon">◎</div><strong>ログインしてください</strong><p>アカウントを作成すると、勉強記録を管理できます。</p><button class="primary-button" id="profile-login-inner">ログイン / 登録</button></div>';renderDailyGoal([]);return}
   if(state.demo)return;
-
-  const {data:logs,error}=await supabase
-    .from('study_logs')
-    .select('minutes,created_at,subject')
-    .eq('user_id',state.user.id)
-    .order('created_at',{ascending:false});
-
-  if(error){
-    root.innerHTML='<p class="muted">プロフィールを読み込めませんでした。</p>';
-    return;
-  }
-
-  const allLogs=logs||[];
-  const list=allLogs.slice(0,10);
-  const total=allLogs.reduce((sum,log)=>sum+Number(log.minutes||0),0);
-  const streak=streakFromLogs(allLogs);
-
-  const weekTotal=allLogs
-    .filter(log=>new Date(log.created_at)>=weekStart())
-    .reduce((sum,log)=>sum+Number(log.minutes||0),0);
-
-  renderDailyGoal(allLogs);
-
+  const {data:logs,error}=await supabase.from('study_logs').select('minutes,created_at,subject').eq('user_id',state.user.id).order('created_at',{ascending:false});
+  if(error){root.innerHTML='<p class="muted">プロフィールを読み込めませんでした。</p>';return}
+  const allLogs=logs||[];const list=allLogs.slice(0,10);const total=allLogs.reduce((sum,log)=>sum+Number(log.minutes||0),0);const streak=streakFromLogs(allLogs);const weekTotal=allLogs.filter(log=>new Date(log.created_at)>=weekStart()).reduce((sum,log)=>sum+Number(log.minutes||0),0);renderDailyGoal(allLogs);
   const badges=[
     {name:'はじめの一歩',desc:'最初の記録を保存',earned:allLogs.length>=1},
     {name:'集中60分',desc:'累計60分',earned:total>=60},
@@ -536,537 +168,138 @@ async function renderProfile(){
     {name:'1週間継続',desc:'7日連続で記録',earned:streak.current>=7},
     {name:'累計10時間',desc:'累計600分',earned:total>=600}
   ];
-
-  root.innerHTML=`
-    <div class="profile-hero">
-      ${avatarHTML(state.profile?.avatar_url,state.profile?.username)}
-      <div>
-        <h3>${escapeHTML(state.profile?.username||'student')}</h3>
-        <p>${escapeHTML(state.user.email||'')} ・ メンバー</p>
-      </div>
-      <button class="secondary-button" id="logout-button">ログアウト</button>
-    </div>
-
-    <div style="margin:12px 0">
-      <label class="field-label" for="avatar-upload">
-        プロフィールアイコン（2MB以下）
-      </label>
-      <input class="text-input" id="avatar-upload" type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
-        style="max-width:100%">
-    </div>
-
-    <div class="profile-stats">
-      <div class="profile-stat">
-        <span>累計勉強時間</span>
-        <strong>${compactMinutes(total)}</strong>
-      </div>
-      <div class="profile-stat">
-        <span>記録回数</span>
-        <strong>${allLogs.length}</strong>
-      </div>
-      <div class="profile-stat">
-        <span>連続記録日数</span>
-        <strong>${streak.current}日</strong>
-      </div>
-      <div class="profile-stat">
-        <span>今週の勉強時間</span>
-        <strong>${compactMinutes(weekTotal)}</strong>
-      </div>
-    </div>
-
-    <section style="margin:22px 0">
-      <h3>獲得バッジ</h3>
-      <p class="muted">記録を積み重ねるとバッジが増えます。</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-        ${badges.map(b=>`
-          <div style="padding:12px;border-radius:12px;border:1px solid var(--border-color,#e5e7eb);opacity:${b.earned?'1':'.55'}">
-            <strong>${b.earned?'★':'◇'} ${escapeHTML(b.name)}</strong>
-            <p class="muted" style="font-size:12px;margin:5px 0 0">
-              ${escapeHTML(b.desc)}${b.earned?' ・獲得済み':''}
-            </p>
-          </div>
-        `).join('')}
-      </div>
-    </section>
-
-    <h3>最近の勉強記録</h3>
-    <div class="feed-list">
-      ${list.map(log=>`
-        <div class="feed-item">
-          <span class="avatar">✎</span>
-          <div class="feed-body">
-            <div class="feed-head">
-              <strong>${escapeHTML(log.subject||'勉強')}</strong>
-              <span class="feed-time">${relativeTime(log.created_at)}</span>
-            </div>
-            <div class="feed-meta">
-              <span class="duration-chip">◷ ${compactMinutes(log.minutes)}</span>
-            </div>
-          </div>
-        </div>
-      `).join('')||'<p class="muted">まだ勉強記録がありません。</p>'}
-    </div>
-
-    <div class="profile-edit">
-      <h3>プロフィール設定</h3>
-      <form id="profile-edit-form">
-        <label class="field-label" for="profile-username">ユーザー名</label>
-        <input class="text-input" id="profile-username"
-          maxlength="24" minlength="2" required
-          value="${escapeHTML(state.profile?.username||'')}">
-
-        <label class="field-label" for="profile-bio">自己紹介</label>
-        <input class="text-input" id="profile-bio"
-          maxlength="160"
-          value="${escapeHTML(state.profile?.bio||'')}"
-          placeholder="勉強の目標など（任意）">
-
-        <button class="primary-button" style="margin-top:12px" type="submit">
-          プロフィールを保存
-        </button>
-      </form>
-    </div>
-  `;
+  root.innerHTML=`<div class="profile-hero">${avatarHTML(state.profile?.avatar_url,state.profile?.username)}<div><h3>${escapeHTML(state.profile?.username||'student')}</h3><p>${escapeHTML(state.user.email||'')} ・ メンバー</p></div><button class="secondary-button" id="logout-button">ログアウト</button></div><div style="margin:12px 0"><label class="field-label" for="avatar-upload">プロフィールアイコン（2MB以下）</label><input class="text-input" id="avatar-upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%"></div><div class="profile-stats"><div class="profile-stat"><span>累計勉強時間</span><strong>${compactMinutes(total)}</strong></div><div class="profile-stat"><span>記録回数</span><strong>${allLogs.length}</strong></div><div class="profile-stat"><span>連続記録日数</span><strong>${streak.current}日</strong></div><div class="profile-stat"><span>今週の勉強時間</span><strong>${compactMinutes(weekTotal)}</strong></div></div><section style="margin:22px 0"><h3>獲得バッジ</h3><p class="muted">記録を積み重ねるとバッジが増えます。自分のペースで続けよう。</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">${badges.map(b=>`<div style="padding:12px;border-radius:12px;border:1px solid var(--border-color,#e5e7eb);opacity:${b.earned?'1':'.55'}"><strong>${b.earned?'★':'◇'} ${escapeHTML(b.name)}</strong><p class="muted" style="font-size:12px;margin:5px 0 0">${escapeHTML(b.desc)}${b.earned?' ・獲得済み':''}</p></div>`).join('')}</div></section><h3>最近の勉強記録</h3><div class="feed-list">${list.map(log=>`<div class="feed-item"><span class="avatar">✎</span><div class="feed-body"><div class="feed-head"><strong>${escapeHTML(log.subject||'勉強')}</strong><span class="feed-time">${relativeTime(log.created_at)}</span></div><div class="feed-meta"><span class="duration-chip">◷ ${compactMinutes(log.minutes)}</span></div></div></div>`).join('')||'<p class="muted">まだ勉強記録がありません。</p>'}</div><div class="profile-edit"><h3>プロフィール設定</h3><form id="profile-edit-form"><label class="field-label" for="profile-username">ユーザー名</label><input class="text-input" id="profile-username" maxlength="24" minlength="2" required value="${escapeHTML(state.profile?.username||'')}"/><label class="field-label" for="profile-bio">自己紹介</label><input class="text-input" id="profile-bio" maxlength="160" value="${escapeHTML(state.profile?.bio||'')}" placeholder="勉強の目標など（任意）"/><button class="primary-button" style="margin-top:12px" type="submit">プロフィールを保存</button></form></div>`;
 }
 
-function weekStart(){
-  const d=new Date();
-  d.setDate(d.getDate()-((d.getDay()+6)%7));
-  d.setHours(0,0,0,0);
-  return d;
+function weekStart(){const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d}
+async function toggleLike(id){if(!state.user){openAuth();showNotice('いいねするにはログインしてください。');return}if(!supabase)return;const post=state.posts.find(p=>p.id===id);if(post?.liked){const {error}=await supabase.from('likes').delete().eq('log_id',id).eq('user_id',state.user.id);if(error)showNotice(error.message,'error')}else{const {error}=await supabase.from('likes').insert({log_id:id,user_id:state.user.id});if(error&&error.code!=='23505')showNotice(error.message,'error')}await loadPosts()}
+async function addComment(e,id){e.preventDefault();const form=e.currentTarget,body=new FormData(form).get('body')?.toString().trim();if(!body)return;if(!state.user){openAuth();showNotice('コメントするにはログインしてください。');return}const {error}=await supabase.from('comments').insert({log_id:id,user_id:state.user.id,body});if(error){showNotice(error.message,'error');return}form.reset();await loadPosts()}
+// --- Social features: public profiles, avatars, friends, direct messages, daily duels ---
+let socialTarget = null;
+let dmTarget = null;
+
+function avatarHTML(url, name='S') {
+  if (url) return `<img class="avatar" src="${escapeHTML(url)}" alt="${escapeHTML(name)}のアイコン" style="object-fit:cover">`;
+  return `<span class="avatar">${escapeHTML(initials(name))}</span>`;
 }
-
-// いいね
-async function toggleLike(id){
-  if(!state.user){
-    openAuth();
-    showNotice('いいねするにはログインしてください。');
-    return;
-  }
-
-  if(!supabase)return;
-
-  const post=state.posts.find(p=>p.id===id);
-
-  if(post?.liked){
-    const {error}=await supabase.from('likes')
-      .delete()
-      .eq('log_id',id)
-      .eq('user_id',state.user.id);
-
-    if(error)showNotice(error.message,'error');
-  }else{
-    const {error}=await supabase.from('likes').insert({
-      log_id:id,
-      user_id:state.user.id
-    });
-
-    if(error&&error.code!=='23505'){
-      showNotice(error.message,'error');
-    }
-  }
-
-  await loadPosts();
-}
-
-// コメント
-async function addComment(e,id){
-  e.preventDefault();
-
-  const form=e.currentTarget;
-  const body=new FormData(form).get('body')?.toString().trim();
-
-  if(!body)return;
-
-  if(!state.user){
-    openAuth();
-    showNotice('コメントするにはログインしてください。');
-    return;
-  }
-
-  const {error}=await supabase.from('comments').insert({
-    log_id:id,
-    user_id:state.user.id,
-    body
-  });
-
-  if(error){
-    showNotice(error.message,'error');
-    return;
-  }
-
-  form.reset();
-  await loadPosts();// 他のユーザーのプロフィールを表示
-async function openUserProfile(userId){
-  if(!userId)return;
-
-  if(state.demo){
-    const demo=demoProfiles.find(p=>p.id===userId);
-
-    if(!demo){
-      showNotice('デモ用プロフィールが見つかりません。');
-      return;
-    }
-
-    showNotice(`${demo.username} のプロフィールを表示しています。`);
-    return;
-  }
-
-  const {data:profile,error}=await supabase
-    .from('profiles')
-    .select('id,username,avatar_url,bio')
-    .eq('id',userId)
-    .maybeSingle();
-
-  if(error||!profile){
-    showNotice('プロフィールを取得できませんでした。','error');
-    return;
-  }
-
-  const {data:logs}=await supabase
-    .from('study_logs')
-    .select('minutes')
-    .eq('user_id',userId);
-
-  const total=(logs||[]).reduce((sum,log)=>sum+Number(log.minutes||0),0);
-
-  const dialog=document.createElement('dialog');
-  dialog.className='auth-dialog';
-
-  dialog.innerHTML=`
-    <form method="dialog" style="text-align:right">
-      <button class="close-button" aria-label="閉じる">×</button>
-    </form>
-    <div style="text-align:center;padding:12px">
-      ${avatarHTML(profile.avatar_url,profile.username)}
-      <h2>${escapeHTML(profile.username)}</h2>
-      <p>${escapeHTML(profile.bio||'自己紹介はまだありません。')}</p>
-      <p>累計勉強時間：${compactMinutes(total)}</p>
-      ${profile.id!==state.user?.id?`
-        <button class="primary-button" id="send-friend-request">
-          友達申請
-        </button>
-      `:''}
+function socialCardStyle(){return 'background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb);border-radius:14px;padding:16px;margin:0 0 14px'}
+function socialSection(title, id, body='') { return `<section style="${socialCardStyle()}"><h3 style="margin:0 0 12px">${title}</h3><div id="${id}">${body}</div></section>`; }
+function setupSocialUI(){
+  const home=$('#home-view');
+  if(!$('#social-view')){
+    const view=document.createElement('section'); view.id='social-view'; view.className='hidden';
+    view.innerHTML=`<div class="social-shell" style="max-width:1000px;margin:0 auto">
+      <div class="social-tabs" role="tablist" aria-label="友達機能">
+        <button type="button" class="social-tab active" data-social-tab="search">ユーザー検索</button>
+        <button type="button" class="social-tab" data-social-tab="friends">友達一覧</button>
+        <button type="button" class="social-tab" data-social-tab="dm">DM</button>
+        <button type="button" class="social-tab" data-social-tab="duels">1日対戦</button>
+      </div>
+      <div class="social-page" data-social-page="search">
+        ${socialSection('ユーザーを探す','social-search-panel',`<form id="social-search-form" style="display:flex;gap:8px;flex-wrap:wrap"><input class="text-input" id="social-search-input" maxlength="24" placeholder="ユーザー名で検索" style="flex:1;min-width:180px"><button class="primary-button" type="submit">検索</button></form><div id="social-search-results" style="margin-top:12px"></div>`)}
+        ${socialSection('プロフィール','social-profile-panel','<p class="muted">検索結果からユーザーを選択してください。</p>')}
+      </div>
+      <div class="social-page hidden" data-social-page="friends">${socialSection('友達一覧・申請','social-friends-panel','<p class="muted">ログインすると友達を表示できます。</p>')}</div>
+      <div class="social-page hidden" data-social-page="dm">
+        <section class="dm-app">
+          <aside class="dm-sidebar"><div class="dm-sidebar-title">メッセージ</div><p class="muted dm-sidebar-hint">友達を選ぶと会話が開きます。</p><div id="dm-friend-picker" class="dm-friend-picker"><p class="muted">友達がここに表示されます。</p></div></aside>
+          <section class="dm-chat-shell">
+            <header id="dm-chat-header" class="dm-chat-header"><div class="dm-header-placeholder">友達を選択してください</div></header>
+            <div id="dm-thread" class="dm-thread" aria-live="polite"><div class="dm-empty">左の友達一覧から相手を選択してください。</div></div>
+            <form id="dm-form" class="dm-compose"><input class="text-input" id="dm-input" maxlength="1000" placeholder="メッセージを書く…" aria-label="メッセージ" style="flex:1;min-width:0" disabled><button class="primary-button" type="submit" disabled>送信</button></form>
+          </section>
+        </section>
+      </div>
+      <div class="social-page hidden" data-social-page="duels">${socialSection('1対1・1日対戦','social-duels-panel',`<p class="muted">友達に対戦を申し込み、同じ日の勉強時間で競います。</p><div id="duel-list"></div>`)}</div>
     </div>`;
-
-  document.body.appendChild(dialog);
-  dialog.showModal();
-
-  dialog.addEventListener('close',()=>dialog.remove());
-
-  dialog.querySelector('#send-friend-request')?.addEventListener('click',async()=>{
-    const {error}=await supabase.from('friend_requests').insert({
-      sender_id:state.user.id,
-      receiver_id:profile.id,
-      status:'pending'
-    });
-
-    if(error){
-      showNotice(
-        error.code==='23505'
-          ?'すでに申請済みか、友達になっています。'
-          :`申請できませんでした：${error.message}`,
-        'error'
-      );
-      return;
-    }
-
-    showNotice('友達申請を送りました。','success');
-    dialog.close();
+    const parent=home?.parentElement||document.querySelector('main')||document.body; parent.appendChild(view);
+  }
+  if(!$('#social-nav-button')){
+    const b=document.createElement('button');b.id='social-nav-button';b.type='button';b.textContent='友達・DM・対戦';b.className='secondary-button';b.style.cssText='margin:8px 0';b.addEventListener('click',()=>showView('social'));
+    const nav=$('[data-view]')?.parentElement; if(nav)nav.appendChild(b);else ($('#account-button')?.parentElement||document.body).appendChild(b);
+  }
+  if(!$('#social-style')){const style=document.createElement('style');style.id='social-style';style.textContent=`
+    #social-view .social-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;padding:5px;background:var(--surface,#f4f5f7);border-radius:14px}
+    #social-view .social-tab{border:0;background:transparent;border-radius:10px;padding:10px 15px;cursor:pointer;color:inherit;font:inherit}
+    #social-view .social-tab.active{background:var(--card-bg,#fff);box-shadow:0 1px 5px #00000012;font-weight:700}
+    #social-view .social-user-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-color,#e5e7eb);flex-wrap:wrap}
+    #social-view .social-user-info{display:flex;align-items:center;gap:10px;min-width:0}
+    #social-view .social-user-info strong{overflow-wrap:anywhere}
+    #social-view .social-actions{display:flex;gap:6px;flex-wrap:wrap}
+    #social-view .social-actions button{font-size:13px;padding:7px 10px}
+    #social-view .dm-app{display:grid;grid-template-columns:minmax(180px,250px) minmax(0,1fr);height:min(620px,72vh);min-height:440px;border:1px solid var(--border-color,#e5e7eb);border-radius:16px;overflow:hidden;background:var(--card-bg,#fff)}
+    #social-view .dm-sidebar{border-right:1px solid var(--border-color,#e5e7eb);overflow:auto;background:var(--surface,#f8f9fb);padding:14px}
+    #social-view .dm-sidebar-title{font-weight:750;font-size:18px;margin:2px 0 5px}
+    #social-view .dm-sidebar-hint{font-size:12px;margin:0 0 12px}
+    #social-view .dm-friend-button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border:0;border-radius:12px;background:transparent;cursor:pointer;color:inherit;margin:3px 0}
+    #social-view .dm-friend-button:hover,#social-view .dm-friend-button.active{background:var(--card-bg,#fff);box-shadow:0 1px 5px #00000012}
+    #social-view .dm-friend-name{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #social-view .dm-chat-shell{min-width:0;display:flex;flex-direction:column;background:var(--card-bg,#fff)}
+    #social-view .dm-chat-header{display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 16px;border-bottom:1px solid var(--border-color,#e5e7eb);font-weight:700}
+    #social-view .dm-thread{flex:1;min-height:0;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px;background:var(--surface,#f8f9fb)}
+    #social-view .dm-bubble-row{display:flex;align-items:flex-end;gap:8px;max-width:88%}
+    #social-view .dm-bubble-row.mine{align-self:flex-end;flex-direction:row-reverse}
+    #social-view .dm-bubble{padding:10px 13px;border-radius:16px 16px 16px 4px;background:var(--card-bg,#fff);border:1px solid var(--border-color,#e5e7eb);overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.45}
+    #social-view .dm-bubble-row.mine .dm-bubble{border-radius:16px 16px 4px 16px;background:var(--accent,#64748b);color:white;border-color:transparent}
+    #social-view .dm-bubble-time{font-size:10px;opacity:.7;margin-top:4px}
+    #social-view .dm-bubble-row.mine .dm-bubble-time{text-align:right}
+    #social-view .dm-empty{margin:auto;text-align:center;color:var(--muted,#777);padding:24px}
+    #social-view .dm-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border-color,#e5e7eb);background:var(--card-bg,#fff)}
+    @media(max-width:620px){#social-view .dm-app{grid-template-columns:105px minmax(0,1fr);height:68vh;min-height:400px}#social-view .dm-sidebar{padding:8px}#social-view .dm-friend-button{padding:8px 4px;gap:5px;flex-direction:column;align-items:flex-start}#social-view .dm-thread{padding:10px}#social-view .dm-bubble-row{max-width:96%}#social-view .dm-compose{padding:8px}}
+  `;document.head.appendChild(style)}
+  $('#social-view')?.addEventListener('click',async e=>{
+    const tab=e.target.closest('[data-social-tab]');
+    if(tab){switchSocialTab(tab.dataset.socialTab);return}
+    const friendButton=e.target.closest('[data-dm-user]');
+    if(friendButton){await openDM(friendButton.dataset.dmUser);return}
   });
+  $('#social-search-form')?.addEventListener('submit',searchSocialUsers);
+  $('#social-search-results')?.addEventListener('click',async e=>{const btn=e.target.closest('[data-social-action]');if(!btn)return;const id=btn.dataset.userId;const action=btn.dataset.socialAction;if(action==='view')await openPublicProfile(id);if(action==='friend')await sendFriendRequest(id);if(action==='dm'){switchSocialTab('dm');await openDM(id)}if(action==='duel')await createDuel(id)});
+  $('#social-profile-panel')?.addEventListener('click',async e=>{const b=e.target.closest('[data-social-action]');if(!b)return;const id=b.dataset.userId;const action=b.dataset.socialAction;if(action==='friend')await sendFriendRequest(id);if(action==='dm'){switchSocialTab('dm');await openDM(id)}if(action==='duel')await createDuel(id)});
+  $('#social-friends-panel')?.addEventListener('click',async e=>{const b=e.target.closest('[data-friend-action]');if(!b)return;if(b.dataset.friendAction==='accept')await acceptFriendRequest(b.dataset.id);if(b.dataset.friendAction==='view')await openPublicProfile(b.dataset.userId);if(b.dataset.friendAction==='dm'){switchSocialTab('dm');await openDM(b.dataset.userId)}if(b.dataset.friendAction==='duel')await createDuel(b.dataset.userId);});
+  $('#dm-form')?.addEventListener('submit',sendDM);
+  $('#duel-list')?.addEventListener('click',async e=>{const b=e.target.closest('[data-duel-action]');if(!b)return;if(b.dataset.duelAction==='accept')await acceptDuel(b.dataset.id);if(b.dataset.duelAction==='view')await openPublicProfile(b.dataset.userId);});
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-open-user]');if(b)openPublicProfile(b.dataset.openUser)});
 }
-
-// 友達申請と友達一覧
-async function loadFriends(){
-  const root=$('#friends-content');
-  if(!root)return;
-
-  if(!state.user||state.demo){
-    root.innerHTML=`
-      <div class="empty-state">
-        <strong>友達機能を使うにはログインしてください</strong>
-        <p>ログインすると友達申請を管理できます。</p>
-      </div>`;
-    return;
-  }
-
-  root.innerHTML='<p class="muted">友達一覧を読み込み中…</p>';
-
-  const {data:requests,error}=await supabase
-    .from('friend_requests')
-    .select('id,sender_id,receiver_id,status,created_at')
-    .or(`sender_id.eq.${state.user.id},receiver_id.eq.${state.user.id}`)
-    .order('created_at',{ascending:false});
-
-  if(error){
-    root.innerHTML='<p class="muted">友達一覧を取得できません。データベース設定を確認してください。</p>';
-    return;
-  }
-
-  const rows=requests||[];
-  const incoming=rows.filter(r=>r.receiver_id===state.user.id&&r.status==='pending');
-  const accepted=rows.filter(r=>r.status==='accepted');
-
-  const ids=[...new Set(rows.map(r=>
-    r.sender_id===state.user.id?r.receiver_id:r.sender_id
-  ))];
-
-  let profiles=[];
-
-  if(ids.length){
-    const result=await supabase
-      .from('profiles')
-      .select('id,username,avatar_url')
-      .in('id',ids);
-
-    profiles=result.data||[];
-  }
-
-  const profileById=Object.fromEntries(profiles.map(p=>[p.id,p]));
-
-  root.innerHTML=`
-    <section class="panel" style="padding:16px;margin-bottom:16px">
-      <h3>受信した友達申請</h3>
-      ${incoming.length?incoming.map(r=>{
-        const p=profileById[r.sender_id];
-
-        return `
-          <div class="friend-row">
-            ${avatarHTML(p?.avatar_url,p?.username||'ユーザー')}
-            <strong>${escapeHTML(p?.username||'ユーザー')}</strong>
-            <button class="primary-button" data-accept-friend="${r.id}">
-              承認
-            </button>
-          </div>`;
-      }).join(''):'<p class="muted">新しい申請はありません。</p>'}
-    </section>
-
-    <section class="panel" style="padding:16px">
-      <h3>友達一覧</h3>
-      ${accepted.length?accepted.map(r=>{
-        const otherId=r.sender_id===state.user.id?r.receiver_id:r.sender_id;
-        const p=profileById[otherId];
-
-        return `
-          <div class="friend-row">
-            ${avatarHTML(p?.avatar_url,p?.username||'ユーザー')}
-            <strong>${escapeHTML(p?.username||'ユーザー')}</strong>
-            <button class="secondary-button" data-open-dm="${otherId}">
-              DM
-            </button>
-            <button class="secondary-button" data-start-duel="${otherId}">
-              対戦
-            </button>
-          </div>`;
-      }).join(''):'<p class="muted">まだ友達がいません。</p>'}
-    </section>`;
+function switchSocialTab(tab){
+  const allowed=['search','friends','dm','duels'];if(!allowed.includes(tab))tab='search';
+  $$('#social-view [data-social-tab]').forEach(b=>{const active=b.dataset.socialTab===tab;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active))});
+  $$('#social-view [data-social-page]').forEach(page=>page.classList.toggle('hidden',page.dataset.socialPage!==tab));
+  if(tab==='friends'||tab==='dm')loadFriends();if(tab==='duels')loadDuels();
 }
-
-// 友達申請の承認
-async function acceptFriendRequest(requestId){
-  if(!state.user||!supabase)return;
-
-  const {error}=await supabase
-    .from('friend_requests')
-    .update({status:'accepted'})
-    .eq('id',requestId)
-    .eq('receiver_id',state.user.id)
-    .eq('status','pending');
-
-  if(error){
-    showNotice(`承認できませんでした：${error.message}`,'error');
-    return;
-  }
-
-  showNotice('友達申請を承認しました。','success');
-  await loadFriends();
+function requireSocialLogin(){if(!state.user||!supabase){showNotice('この機能を使うには、Supabaseを設定してログインしてください。');if(!state.user)openAuth();return false}return true}
+async function searchSocialUsers(e){e?.preventDefault();if(!requireSocialLogin())return;const q=$('#social-search-input').value.trim();if(q.length<2){$('#social-search-results').innerHTML='<p class="muted">2文字以上のユーザー名を入力してください。</p>';return}const {data,error}=await supabase.from('profiles').select('id,username,bio,avatar_url').ilike('username',`%${q.replace(/[%_]/g,'')}%`).neq('id',state.user.id).limit(20);if(error){$('#social-search-results').innerHTML=`<p class="muted">検索できませんでした。SQL設定を確認してください。</p>`;return}$('#social-search-results').innerHTML=(data||[]).map(p=>`<div class="social-user-row"><div class="social-user-info">${avatarHTML(p.avatar_url,p.username)}<div><strong>${escapeHTML(p.username)}</strong><div class="muted">${escapeHTML(p.bio||'自己紹介なし')}</div></div></div><div class="social-actions"><button class="secondary-button" data-social-action="view" data-user-id="${p.id}">プロフィール</button><button class="secondary-button" data-social-action="friend" data-user-id="${p.id}">友達追加</button><button class="secondary-button" data-social-action="dm" data-user-id="${p.id}">DM</button><button class="secondary-button" data-social-action="duel" data-user-id="${p.id}">対戦</button></div></div>`).join('')||'<p class="muted">ユーザーが見つかりませんでした。</p>'}
+async function openPublicProfile(id){if(!requireSocialLogin())return;if(!id||id===state.user.id){showView('profile');return}const [{data:p,error},{data:logs}]=await Promise.all([supabase.from('profiles').select('id,username,bio,avatar_url').eq('id',id).maybeSingle(),supabase.from('study_logs').select('minutes,created_at').eq('user_id',id)]);if(error||!p){showNotice('プロフィールを読み込めませんでした。','error');return}socialTarget=p;const total=(logs||[]).reduce((s,l)=>s+Number(l.minutes||0),0);const todayKey=localDayKey(new Date());const today=(logs||[]).filter(l=>localDayKey(l.created_at)===todayKey).reduce((s,l)=>s+Number(l.minutes||0),0);$('#social-profile-panel').innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${avatarHTML(p.avatar_url,p.username)}<div style="flex:1;min-width:140px"><h3 style="margin:0">${escapeHTML(p.username)}</h3><p class="muted" style="margin:5px 0">${escapeHTML(p.bio||'自己紹介なし')}</p><p style="margin:0">累計 ${compactMinutes(total)} ・ 今日 ${compactMinutes(today)}</p></div></div><div class="social-actions" style="margin-top:12px"><button class="secondary-button" data-social-action="friend" data-user-id="${p.id}">友達追加</button><button class="secondary-button" data-social-action="dm" data-user-id="${p.id}">DMを送る</button><button class="primary-button" data-social-action="duel" data-user-id="${p.id}">1日対戦を申し込む</button></div>`;}
+async function sendFriendRequest(id){if(!requireSocialLogin()||id===state.user.id)return;const {data:existing}=await supabase.from('friendships').select('id,status,requester_id,addressee_id').or(`and(requester_id.eq.${state.user.id},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${state.user.id})`).maybeSingle();if(existing){if(existing.status==='accepted')showNotice('すでに友達です。');else showNotice('友達申請はすでに存在します。');return}const {error}=await supabase.from('friendships').insert({requester_id:state.user.id,addressee_id:id,status:'pending'});if(error){showNotice('友達申請を送れませんでした。SQL設定を確認してください。','error');return}showNotice('友達申請を送りました。','success');await loadFriends();}
+async function loadFriends(){const root=$('#social-friends-panel');if(!root)return;if(!state.user||!supabase){root.innerHTML='<p class="muted">ログインすると友達を追加できます。</p>';return}const {data:rows,error}=await supabase.from('friendships').select('id,requester_id,addressee_id,status,created_at').or(`requester_id.eq.${state.user.id},addressee_id.eq.${state.user.id}`).order('created_at',{ascending:false});if(error){root.innerHTML='<p class="muted">友達を読み込めません。SQL設定を適用してください。</p>';return}const ids=[...new Set((rows||[]).map(r=>r.requester_id===state.user.id?r.addressee_id:r.requester_id))];let profiles=[];if(ids.length){const result=await supabase.from('profiles').select('id,username,avatar_url,bio').in('id',ids);profiles=result.data||[]}const byId=Object.fromEntries(profiles.map(p=>[p.id,p]));const html=(rows||[]).map(r=>{const otherId=r.requester_id===state.user.id?r.addressee_id:r.requester_id;const p=byId[otherId]||{username:'ユーザー'};const inbound=r.addressee_id===state.user.id&&r.status==='pending';return `<div class="social-user-row"><div class="social-user-info">${avatarHTML(p.avatar_url,p.username)}<div><strong>${escapeHTML(p.username)}</strong><div class="muted">${r.status==='accepted'?'友達':inbound?'友達申請が届いています':'申請中'}</div></div></div><div class="social-actions">${inbound?`<button class="primary-button" data-friend-action="accept" data-id="${r.id}">承認</button>`:''}<button class="secondary-button" data-friend-action="view" data-user-id="${otherId}">プロフィール</button>${r.status==='accepted'?`<button class="secondary-button" data-friend-action="dm" data-user-id="${otherId}">DM</button><button class="secondary-button" data-friend-action="duel" data-user-id="${otherId}">対戦</button>`:''}</div></div>`}).join('');root.innerHTML=html||'<p class="muted">まだ友達はいません。上の検索からユーザーを探してください。</p>';const accepted=(rows||[]).filter(r=>r.status==='accepted').map(r=>{const id=r.requester_id===state.user.id?r.addressee_id:r.requester_id;return {id,username:byId[id]?.username||'ユーザー'}});$('#dm-friend-picker').innerHTML=accepted.length?accepted.map(p=>`<button type="button" class="dm-friend-button ${dmTarget===p.id?'active':''}" data-dm-user="${p.id}">${avatarHTML(byId[p.id]?.avatar_url,p.username)}<span class="dm-friend-name">${escapeHTML(p.username)}</span></button>`).join(''):'<p class="muted">DMを送るには、先に友達になってください。</p>'}
+async function acceptFriendRequest(id){if(!requireSocialLogin())return;const {error}=await supabase.from('friendships').update({status:'accepted'}).eq('id',id).eq('addressee_id',state.user.id);if(error){showNotice('申請を承認できませんでした。','error');return}showNotice('友達になりました。','success');await loadFriends()}
+async function openDM(userId){
+  if(!requireSocialLogin())return;
+  dmTarget=userId;switchSocialTab('dm');
+  const [{data:p},{data:messages,error}]=await Promise.all([
+    supabase.from('profiles').select('username,avatar_url').eq('id',userId).maybeSingle(),
+    supabase.from('direct_messages').select('id,sender_id,recipient_id,body,created_at').or(`and(sender_id.eq.${state.user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${state.user.id})`).order('created_at',{ascending:true}).limit(100)
+  ]);
+  const name=p?.username||'友達';
+  $('#dm-chat-header').innerHTML=`${avatarHTML(p?.avatar_url,name)}<div><div>${escapeHTML(name)}</div><small class="muted" style="font-weight:400">ダイレクトメッセージ</small></div>`;
+  $('#dm-thread').innerHTML=error?'<div class="dm-empty">DMを読み込めません。友達関係とSQL設定を確認してください。</div>':(messages||[]).map(m=>`<div class="dm-bubble-row ${m.sender_id===state.user.id?'mine':'theirs'}"><div class="dm-bubble">${escapeHTML(m.body)}<div class="dm-bubble-time">${relativeTime(m.created_at)}</div></div></div>`).join('')||'<div class="dm-empty">最初のメッセージを送ってみましょう。</div>';
+  $('#dm-thread').dataset.userId=userId;
+  $('#dm-input').placeholder=`${name}にメッセージを書く…`;
+  $('#dm-input').disabled=Boolean(error);$('#dm-form button').disabled=Boolean(error);
+  $$('#dm-friend-picker [data-dm-user]').forEach(b=>b.classList.toggle('active',b.dataset.dmUser===userId));
+  $('#dm-thread').scrollTop=$('#dm-thread').scrollHeight;
+  if(!error)$('#dm-input').focus();
 }
+async function sendDM(e){e.preventDefault();if(!requireSocialLogin())return;const recipient=dmTarget||$('#dm-thread').dataset.userId;const body=$('#dm-input').value.trim();if(!recipient||!body){showNotice('友達を選び、メッセージを入力してください。');return}const {error}=await supabase.from('direct_messages').insert({sender_id:state.user.id,recipient_id:recipient,body});if(error){showNotice('DMを送れませんでした。友達同士か、SQL設定を確認してください。','error');return}$('#dm-input').value='';await openDM(recipient)}
+async function createDuel(opponentId){if(!requireSocialLogin()||opponentId===state.user.id)return;const {data:friend}=await supabase.from('friendships').select('id').eq('status','accepted').or(`and(requester_id.eq.${state.user.id},addressee_id.eq.${opponentId}),and(requester_id.eq.${opponentId},addressee_id.eq.${state.user.id})`).maybeSingle();if(!friend){showNotice('1日対戦は友達同士で利用できます。先に友達追加してください。');return}const duelDate=localDayKey(new Date());const {error}=await supabase.from('duels').insert({challenger_id:state.user.id,opponent_id:opponentId,duel_date:duelDate,status:'pending'});if(error){showNotice('対戦を申し込めませんでした。今日の対戦がすでにあるか、SQL設定を確認してください。','error');return}showNotice('今日の対戦を申し込みました。','success');await loadDuels()}
+async function acceptDuel(id){if(!requireSocialLogin())return;const {error}=await supabase.from('duels').update({status:'accepted'}).eq('id',id).eq('opponent_id',state.user.id).eq('status','pending');if(error){showNotice('対戦を承認できませんでした。','error');return}showNotice('1日対戦を開始しました。','success');await loadDuels()}
+async function loadDuels(){const root=$('#duel-list');if(!root)return;if(!state.user||!supabase){root.innerHTML='<p class="muted">ログインすると1日対戦ができます。</p>';return}const {data:duels,error}=await supabase.from('duels').select('id,challenger_id,opponent_id,duel_date,status,created_at').or(`challenger_id.eq.${state.user.id},opponent_id.eq.${state.user.id}`).order('created_at',{ascending:false}).limit(30);if(error){root.innerHTML='<p class="muted">対戦を読み込めません。SQL設定を適用してください。</p>';return}const ids=[...new Set((duels||[]).flatMap(d=>[d.challenger_id,d.opponent_id]))];let profs=[];if(ids.length){const r=await supabase.from('profiles').select('id,username').in('id',ids);profs=r.data||[]}const names=Object.fromEntries(profs.map(p=>[p.id,p.username]));const dates=[...new Set((duels||[]).map(d=>d.duel_date))];const scoreMap={};if(dates.length){for(const date of dates){const start=new Date(`${date}T00:00:00`);const end=new Date(start);end.setDate(end.getDate()+1);const r=await supabase.from('study_logs').select('user_id,minutes').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).in('user_id',ids);(r.data||[]).forEach(log=>{scoreMap[`${date}:${log.user_id}`]=(scoreMap[`${date}:${log.user_id}`]||0)+Number(log.minutes||0)})}}root.innerHTML=(duels||[]).map(d=>{const mine=d.challenger_id===state.user.id;const other=mine?d.opponent_id:d.challenger_id;const a=scoreMap[`${d.duel_date}:${d.challenger_id}`]||0,b=scoreMap[`${d.duel_date}:${d.opponent_id}`]||0;let result='対戦申請中';if(d.status==='accepted')result=a===b?'同点':a>b?`${escapeHTML(names[d.challenger_id]||'挑戦者')} がリード`:`${escapeHTML(names[d.opponent_id]||'対戦相手')} がリード`;return `<div class="social-user-row" style="align-items:flex-start"><div style="flex:1;min-width:180px"><strong>${escapeHTML(names[d.challenger_id]||'挑戦者')} vs ${escapeHTML(names[d.opponent_id]||'対戦相手')}</strong><div class="muted">日付：${escapeHTML(d.duel_date)} ・ ${d.status==='accepted'?'対戦中':d.status==='completed'?'終了':'申請中'}</div><p style="margin:7px 0">${d.status==='accepted'?`${compactMinutes(a)} vs ${compactMinutes(b)}　— ${result}`:result}</p></div><div class="social-actions">${d.status==='pending'&&!mine?`<button class="primary-button" data-duel-action="accept" data-id="${d.id}">承認</button>`:''}<button class="secondary-button" data-duel-action="view" data-user-id="${other}">プロフィール</button></div></div>`}).join('')||'<p class="muted">対戦はまだありません。友達のプロフィールから申し込めます。</p>'}
+async function uploadAvatar(file){if(!requireSocialLogin())return;if(!file)return;if(!/^image\/(png|jpeg|webp|gif)$/.test(file.type)||file.size>2*1024*1024){showNotice('画像はPNG・JPEG・WebP・GIF、2MB以下にしてください。','error');return}const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';const path=`${state.user.id}/${Date.now()}.${ext}`;const {error:uploadError}=await supabase.storage.from('avatars').upload(path,file,{upsert:true,contentType:file.type});if(uploadError){showNotice('アイコンをアップロードできません。Supabaseにavatarsストレージを設定してください。','error');return}const {data}=supabase.storage.from('avatars').getPublicUrl(path);const {data:profile,error}=await supabase.from('profiles').update({avatar_url:data.publicUrl}).eq('id',state.user.id).select().single();if(error){showNotice('アイコンURLを保存できませんでした。profiles.avatar_url列を確認してください。','error');return}state.profile=profile;showNotice('アイコンを更新しました。','success');await renderProfile();await loadPosts();}
 
-// DM画面を開く
-async function openDM(otherUserId){
-  if(!state.user||!supabase){
-    openAuth();
-    return;
-  }
 
-  const {data:profile}=await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id',otherUserId)
-    .maybeSingle();
-
-  const root=$('#dm-content');
-  if(!root)return;
-
-  root.innerHTML=`
-    <section class="panel" style="padding:16px">
-      <h3>${escapeHTML(profile?.username||'友達')} とのDM</h3>
-      <div id="dm-messages" style="max-height:360px;overflow:auto"></div>
-      <form id="dm-form" style="display:flex;gap:8px;margin-top:12px">
-        <input class="text-input" name="body" maxlength="1000"
-          placeholder="メッセージを入力…" required>
-        <button class="primary-button" type="submit">送信</button>
-      </form>
-    </section>`;
-
-  showView('social');
-
-  await loadDMMessages(otherUserId);
-
-  $('#dm-form').addEventListener('submit',async e=>{
-    e.preventDefault();
-
-    const form=e.currentTarget;
-    const body=new FormData(form).get('body')?.toString().trim();
-
-    if(!body)return;
-
-    const {error}=await supabase.from('direct_messages').insert({
-      sender_id:state.user.id,
-      receiver_id:otherUserId,
-      body
-    });
-
-    if(error){
-      showNotice(`送信できませんでした：${error.message}`,'error');
-      return;
-    }
-
-    form.reset();
-    await loadDMMessages(otherUserId);
-  });
-}
-
-// DMの読み込み
-async function loadDMMessages(otherUserId){
-  if(!state.user||!supabase)return;
-
-  const {data,error}=await supabase
-    .from('direct_messages')
-    .select('id,sender_id,receiver_id,body,created_at')
-    .or(
-      `and(sender_id.eq.${state.user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${state.user.id})`
-    )
-    .order('created_at',{ascending:true})
-    .limit(100);
-
-  const root=$('#dm-messages');
-  if(!root)return;
-
-  if(error){
-    root.innerHTML='<p class="muted">DMを読み込めません。SQL設定を確認してください。</p>';
-    return;
-  }
-
-  root.innerHTML=(data||[]).map(m=>`
-    <div style="display:flex;justify-content:${m.sender_id===state.user.id?'flex-end':'flex-start'};margin:8px 0">
-      <div style="padding:10px 14px;border-radius:14px;background:var(--surface,#f1f5f9);max-width:80%;overflow-wrap:anywhere">
-        ${escapeHTML(m.body)}
-        <small style="display:block;margin-top:4px;color:var(--muted,#64748b)">
-          ${relativeTime(m.created_at)}
-        </small>
-      </div>
-    </div>
-  `).join('');
-
-  root.scrollTop=root.scrollHeight;
-}
-
-// 1対1の1日勉強時間対戦
-async function startDuel(opponentId){
-  if(!state.user||!supabase){
-    openAuth();
-    return;
-  }
-
-  if(opponentId===state.user.id){
-    showNotice('自分自身とは対戦できません。');
-    return;
-  }
-
-  const {data:existing}=await supabase
-    .from('study_duels')
-    .select('id,status')
-    .eq('status','active')
-    .or(
-      `and(player1_id.eq.${state.user.id},player2_id.eq.${opponentId}),and(player1_id.eq.${opponentId},player2_id.eq.${state.user.id})`
-    )
-    .limit(1);
-
-  if(existing?.length){
-    showNotice('この友達とはすでに対戦中です。');
-    return;
-  }
-
-  const {error}=await supabase.from('study_duels').insert({
-    player1_id:state.user.id,
-    player2_id:opponentId,
-    status:'active',
-    starts_at:new Date().toISOString(),
-    ends_at:new Date(Date.now()+24*60*60*1000).toISOString()
-  });
-
-  if(error){
-    showNotice(`対戦を開始できませんでした：${error.message}`,'error');
-    return;
-  }
-
-  showNotice('24時間の勉強対戦を開始しました。','success');
-  await loadDuels();
-}
-
-// 対戦状況を表示
-async function loadDuels(){
-  const root=$('#duels-content');
-  if(!root)return;
-
-  if(!state.user||state.demo){
-    root.innerHTML='<p class="muted">対戦機能を使うにはログインしてください。</p>';
-    return;
-  }
-
-  const {data:duels,error}=await supabase
-    .from('study_duels')
-    .select('id,player1_id,player2_id,status,starts_at,ends_at')
-    .or(`player1_id.eq.${state.user.id},player2_id.eq.${state.user.id}`)
-    .order('starts_at',{ascending:false})
-    .limit(20);
-
-  if(error){
-    root.innerHTML='<p class="muted">対戦情報を読み込めません。データベース設定を確認してください。</p>';
-    return;
-  }
-
-  const list=duels||[];
-
-  const ids=[...new Set(list.flatMap(d=>[d.player1_id,d.player2_id]))];
-
-  let profiles=[];
-
-  if(ids.length){
-    const result=await supabase.from('profiles')
-      .select('id,username')
-      .in('id',ids);
-
-    profiles=result.data||[];
-  }
-
-  const names=Object.fromEntries(profiles.map(p=>[p.id,p.username]));
-
-  root.innerHTML=list.length?list.map(d=>{
-    const opponent=d.player1_id===state.user.id?d.player2_id:d.player1_id;
-    const active=d.status==='active'&&new Date(d.ends_at)>new Date();
-
-    return `
-      <div class="panel" style="padding:14px;margin-bottom:10px">
-        <strong>${escapeHTML(names[opponent]||'友達')} との対戦</strong>
-        <p class="muted">${active?'対戦中':'終了または完了'}</p>
-        <p>終了予定：${new Date(d.ends_at).toLocaleString('ja-JP')}</p>
-        <button class="secondary-button" data-duel-result="${d.id}">
-          勉強時間を確認
-        </button>
-      </div>`;
-  }).join(''):'<p class="muted">対戦履歴はありません。友達一覧から対戦を始められます。</p>';
-}
-}
+setupSocialUI();
+setupRankingPeriods();
+$('#today-label').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).toUpperCase();
+$$('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));$('#refresh-button').addEventListener('click',()=>loadAll());$('#account-button').addEventListener('click',()=>state.user?showView('profile'):openAuth());$('#empty-login').addEventListener('click',()=>openAuth());$('#profile-login').addEventListener('click',()=>openAuth());$('#profile-content').addEventListener('click',e=>{if(e.target.id==='profile-login-inner')openAuth();if(e.target.id==='logout-button')logout()});$('#profile-content').addEventListener('change',e=>{if(e.target.id==='avatar-upload')uploadAvatar(e.target.files?.[0])});$('#login-tab').addEventListener('click',()=>setAuthMode('login'));$('#signup-tab').addEventListener('click',()=>setAuthMode('signup'));$('#forgot-password').addEventListener('click',sendPasswordReset);$('#auth-form').addEventListener('submit',authSubmit);$('#ranking-period').addEventListener('change',renderRanking);$('#timer-start').addEventListener('click',startTimer);$('#timer-pause').addEventListener('click',pauseTimer);$('#timer-reset').addEventListener('click',resetTimer);$('#save-session').addEventListener('click',async()=>{const minutes=Math.floor(state.timerSeconds/60);if(minutes<1)return;if(await saveStudy(minutes,$('#study-subject').value)){resetTimer();$('#study-subject').value=''}});$('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const minutes=Number($('#manual-minutes').value);if(!Number.isInteger(minutes)||minutes<1||minutes>1440){showNotice('勉強時間は1〜1440分で入力してください。','error');return}if(await saveStudy(minutes,$('#manual-subject').value)){e.currentTarget.reset()}});$('#feed-list').addEventListener('click',e=>{const like=e.target.closest('[data-like]');if(like){if(state.demo){state.likes.has(like.dataset.like)?state.likes.delete(like.dataset.like):state.likes.add(like.dataset.like);renderFeed();showNotice('デモモードでは変更は保存されません。');}else toggleLike(like.dataset.like)}const comment=e.target.closest('[data-comment-toggle]');if(comment){const form=$(`[data-comment-form="${comment.dataset.commentToggle}"]`);form?.classList.toggle('hidden');form?.querySelector('input')?.focus()}});$('#feed-list').addEventListener('submit',e=>{const form=e.target.closest('[data-comment-form]');if(!form)return;e.preventDefault();if(state.demo){showNotice('デモモードではコメントは保存されません。');return}addComment(e,form.dataset.commentForm)});$('#chat-form').addEventListener('submit',async e=>{e.preventDefault();const body=$('#chat-input').value.trim();if(!body)return;if(!state.user){openAuth();return}const {error}=await supabase.from('messages').insert({user_id:state.user.id,body});if(error){showNotice(error.message,'error');return}$('#chat-input').value='';await loadChat()});$('#profile-content').addEventListener('submit',async e=>{if(e.target.id!=='profile-edit-form')return;e.preventDefault();const username=$('#profile-username').value.trim(),bio=$('#profile-bio').value.trim();const {data,error}=await supabase.from('profiles').update({username,bio}).eq('id',state.user.id).select().single();if(error){showNotice(error.message,'error');return}state.profile=data;updateAccountButton();showNotice('プロフィールを保存しました。','success');await loadAll()});
+async function logout(){if(supabase)await supabase.auth.signOut();state.user=null;state.profile=null;updateAccountButton();showNotice('ログアウトしました。');await loadAll();showView('home')}
+if(supabase){supabase.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')setTimeout(()=>openRecoveryDialog(),0);setTimeout(()=>loadAll(),0)});supabase.channel('study-logs-live').on('postgres_changes',{event:'*',schema:'public',table:'study_logs'},()=>{loadPosts();renderStats();renderRanking();loadDuels()}).on('postgres_changes',{event:'*',schema:'public',table:'messages'},()=>loadChat()).on('postgres_changes',{event:'*',schema:'public',table:'direct_messages'},()=>{if(dmTarget)openDM(dmTarget)}).subscribe();}updateTimer();updateAccountButton();loadAll();
