@@ -3,7 +3,7 @@
 レスポンシブな勉強SNSのスターターです。ホーム、公開ランキング、タイマー、手動記録、プロフィール、いいね、コメント、チャットを含みます。Supabaseを設定するまではデモデータを表示し、データは保存されません。
 
 ## 0.公式リンク
--https://stud-ng.vercel.app/?utm_source=chatgpt.com
+https://stud-ng.vercel.app/?utm_source=chatgpt.com
 
 ## 1. 必要なもの
 - Supabaseアカウント（認証・データベース）
